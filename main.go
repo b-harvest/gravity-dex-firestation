@@ -55,16 +55,15 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 	if err != nil {
 		return fmt.Errorf("failed to get pool price: %s", err)
 	}
-	poolPrice := reserveAmtX.Quo(reserveAmtY)
 
 	priceX, priceY, err := client.Market.GetMarketPrices(ctx, cmcSymbols)
 	if err != nil {
 		return fmt.Errorf("failed to get pool prices: %s", err)
 	}
-	globalPrice := priceY.Quo(priceX)
 
-	// PRICEDIFF = GLOBALPRICE/POOLPRICE - 1
-	priceDiff := globalPrice.Quo(poolPrice).Sub(sdk.NewDec(1))
+	poolPrice := reserveAmtX.Quo(reserveAmtY)                  // POOLPRICE   = ATOMRESERVE/LUNARESERVE
+	globalPrice := priceX.Quo(priceY)                          // GLOBALPRICE = LUNAUSD/ATOMUSD
+	priceDiff := globalPrice.Quo(poolPrice).Sub(sdk.NewDec(1)) // PRICEDIFF   = GLOBALPRICE/POOLPRICE - 1
 
 	log.Debug().
 		Str("reserveAmtX", reserveAmtX.String()).
@@ -91,11 +90,9 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 
 	transaction := tx.NewTransaction(client, chainID)
 
-	// LUNA is overpriced / ATOM is underpriced
-	if priceDiff.IsPositive() && priceDiff.GT(sdk.NewDecWithPrec(1, 1)) { // swapDirection 0.1
-		// LUNA = LUNARESERVE * MIN(abs(PRICEDIFF/2),0.01)
-		orderAmount := reserveAmtY.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2)))
-
+	// LUNA is overpriced / ATOM is underpriced / price diff is greater than 10%
+	if priceDiff.IsPositive() && priceDiff.GT(sdk.NewDecWithPrec(1, 1)) {
+		orderAmount := reserveAmtY.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2))) // LUNA = LUNARESERVE * MIN(abs(PRICEDIFF/2),0.01)
 		poolCreator := accAddr
 		poolId := uint64(1) // TODO: query pool id for generalization
 		swapTypeId := uint32(1)
@@ -135,11 +132,9 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 			Msg("result")
 	}
 
-	// LUNA is underpriced / ATOM is overpriced
-	if priceDiff.IsNegative() && priceDiff.LT(sdk.NewDecWithPrec(-1, 1)) { // swapDirection -0.1
-		// ATOM = ATOMRESERVE * MIN(abs(PRICEDIFF/2),0.01)
-		orderAmount := reserveAmtX.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2)))
-
+	// LUNA is underpriced / ATOM is overpriced / price diff le than -10%
+	if priceDiff.IsNegative() && priceDiff.LT(sdk.NewDecWithPrec(-1, 1)) {
+		orderAmount := reserveAmtX.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2))) // ATOM = ATOMRESERVE * MIN(abs(PRICEDIFF/2),0.01)
 		poolCreator := accAddr
 		poolId := uint64(1) // TODO: query pool id for generalization
 		swapTypeId := uint32(1)
