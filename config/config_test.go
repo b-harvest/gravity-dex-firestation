@@ -39,6 +39,8 @@ cmc_id_b = "4172"
 denom_a = "uatom"
 denom_b = "uluna"
 pool_id = 1
+fee_denom = "stake"
+fee_amount = 0
 `
 	cfg, err := config.ParseString([]byte(sampleConfig))
 	require.NoError(t, err)

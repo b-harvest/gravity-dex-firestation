@@ -60,6 +60,7 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 
 	accSeq := account.GetSequence()
 	accNum := account.GetAccountNumber()
+	fees := sdk.NewCoins(sdk.NewCoin(cfg.FireStation.FeeDenom, sdk.NewInt(cfg.FireStation.FeeAmount)))
 
 	reservePoolDenoms := []string{cfg.FireStation.DenomA, cfg.FireStation.DenomB}
 	cmcIds := []string{cfg.FireStation.CmcIdA, cfg.FireStation.CmcIdB}
@@ -88,7 +89,7 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 		Str("priceDiff", priceDiff.String()).
 		Msg("")
 
-	transaction := tx.NewTransaction(client, chainID)
+	transaction := tx.NewTransaction(client, chainID, fees)
 
 	switch {
 	// LUNA is overpriced / ATOM is underpriced / price diff is greater than 1%
@@ -135,7 +136,7 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 			Msg("result")
 
 	// LUNA is underpriced / ATOM is overpriced / price diff is less than -1%
-	case priceDiff.IsNegative() && priceDiff.LT(sdk.NewDecWithPrec(-1, 2)):
+	case priceDiff.IsNegative() && priceDiff.LT(sdk.NewDecWithPrec(-1, 2)): // 0.01 = -1,2
 		log.Info().Msgf("priceDiff is negative; selling '%s' and buying '%s'", reservePoolDenoms[1], reservePoolDenoms[0])
 
 		orderAmount := reserveAmtY.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2))) // LUNA = LUNARESERVE * MIN(abs(PRICEDIFF/2),0.01)
@@ -176,6 +177,7 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 			Str("TxHash", resp.GetTxResponse().TxHash).
 			Int64("Height", resp.GetTxResponse().Height).
 			Msg("result")
+
 	default:
 		log.Info().Msg("pool price is already stabilized")
 	}

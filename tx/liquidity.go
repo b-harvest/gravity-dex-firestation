@@ -18,7 +18,6 @@ import (
 
 var (
 	gasLimit = uint64(100000000)
-	fees     = sdk.NewCoins(sdk.NewCoin("stake", sdk.NewInt(5000)))
 	memo     = ""
 )
 
@@ -26,13 +25,15 @@ var (
 type Transaction struct {
 	Client  *client.Client `json:"client"`
 	ChainID string         `json:"chain_id"`
+	Fees    sdk.Coins      `json:"fees"`
 }
 
 // NewTransaction returns new Transaction object.
-func NewTransaction(client *client.Client, chainID string) *Transaction {
+func NewTransaction(client *client.Client, chainID string, fees sdk.Coins) *Transaction {
 	return &Transaction{
 		Client:  client,
 		ChainID: chainID,
+		Fees:    fees,
 	}
 }
 
@@ -58,7 +59,7 @@ func (t *Transaction) Sign(ctx context.Context, accSeq uint64, accNum uint64, pr
 	txBuilder := t.Client.CliCtx.TxConfig.NewTxBuilder()
 	txBuilder.SetMsgs(msgs...)
 	txBuilder.SetGasLimit(gasLimit)
-	txBuilder.SetFeeAmount(fees)
+	txBuilder.SetFeeAmount(t.Fees)
 	txBuilder.SetMemo(memo)
 
 	signMode := t.Client.CliCtx.TxConfig.SignModeHandler().DefaultMode()
@@ -107,7 +108,7 @@ func (t *Transaction) BroadcastTx(ctx context.Context, txBytes []byte) (*sdktx.B
 
 	req := &sdktx.BroadcastTxRequest{
 		TxBytes: txBytes,
-		Mode:    sdktx.BroadcastMode_BROADCAST_MODE_ASYNC,
+		Mode:    sdktx.BroadcastMode_BROADCAST_MODE_BLOCK,
 	}
 	return client.BroadcastTx(ctx, req)
 }
