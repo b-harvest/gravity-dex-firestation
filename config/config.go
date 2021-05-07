@@ -103,7 +103,7 @@ func Read(configPath string) (Config, error) {
 		return Config{}, fmt.Errorf("empty configuration path")
 	}
 
-	log.Debug().Msg("reading config file")
+	log.Debug().Msg("reading config file...")
 
 	configData, err := ioutil.ReadFile(configPath)
 	if err != nil {
@@ -118,7 +118,7 @@ func Read(configPath string) (Config, error) {
 func ParseString(configData []byte) (Config, error) {
 	var cfg Config
 
-	log.Debug().Msg("parsing config data")
+	log.Debug().Msg("parsing config data...")
 
 	err := toml.Unmarshal(configData, &cfg)
 	if err != nil {

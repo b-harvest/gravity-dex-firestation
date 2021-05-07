@@ -48,33 +48,6 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 		return fmt.Errorf("failed to get chain id: %s", err)
 	}
 
-	reservePoolDenoms := []string{cfg.FireStation.DenomA, cfg.FireStation.DenomB}
-	cmcSymbols := []string{cfg.FireStation.CmcSymbolA, cfg.FireStation.CmcSymbolB}
-
-	reserveAmtX, reserveAmtY, err := client.GRPC.GetPoolReserves(ctx, reservePoolDenoms)
-	if err != nil {
-		return fmt.Errorf("failed to get pool price: %s", err)
-	}
-
-	priceX, priceY, err := client.Market.GetMarketPrices(ctx, cmcSymbols)
-	if err != nil {
-		return fmt.Errorf("failed to get pool prices: %s", err)
-	}
-
-	poolPrice := reserveAmtX.Quo(reserveAmtY)                  // POOLPRICE   = ATOMRESERVE/LUNARESERVE
-	globalPrice := priceY.Quo(priceX)                          // GLOBALPRICE = LUNAUSD/ATOMUSD
-	priceDiff := globalPrice.Quo(poolPrice).Sub(sdk.NewDec(1)) // PRICEDIFF   = GLOBALPRICE/POOLPRICE - 1
-
-	log.Debug().
-		Str("reserveAmtX", reserveAmtX.String()).
-		Str("reserveAmtY", reserveAmtY.String()).
-		Str("poolPrice", poolPrice.String()).
-		Str("priceX", priceX.String()).
-		Str("priceY", priceY.String()).
-		Str("globalPrice", globalPrice.String()).
-		Str("priceDiff", priceDiff.String()).
-		Msg("Result")
-
 	accAddr, privKey, err := wallet.RecoverAccountFromMnemonic(cfg.Wallet.Mnemonic, "")
 	if err != nil {
 		return fmt.Errorf("failed to retrieve account and private key from mnemonic: %s", err)
@@ -88,10 +61,40 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 	accSeq := account.GetSequence()
 	accNum := account.GetAccountNumber()
 
+	reservePoolDenoms := []string{cfg.FireStation.DenomA, cfg.FireStation.DenomB}
+	cmcSymbols := []string{cfg.FireStation.CmcSymbolA, cfg.FireStation.CmcSymbolB}
+
+	reserveAmtX, reserveAmtY, err := client.GRPC.GetPoolReserves(ctx, reservePoolDenoms)
+	if err != nil {
+		return fmt.Errorf("failed to get pool price: %s", err)
+	}
+
+	globalPriceX, globalPriceY, err := client.Market.GetMarketPrices(ctx, cmcSymbols)
+	if err != nil {
+		return fmt.Errorf("failed to get pool prices: %s", err)
+	}
+
+	poolPrice := reserveAmtX.Quo(reserveAmtY)                  // POOLPRICE   = ATOMRESERVE/LUNARESERVE
+	globalPrice := globalPriceX.Quo(globalPriceY)              // GLOBALPRICE = ATOMUSD/LUNAUSD
+	priceDiff := globalPrice.Quo(poolPrice).Sub(sdk.NewDec(1)) // PRICEDIFF   = GLOBALPRICE/POOLPRICE - 1
+
+	log.Debug().
+		Str("reserveAmountX", reserveAmtX.String()).
+		Str("reserveAmountY", reserveAmtY.String()).
+		Str("reservePoolPrice", poolPrice.String()).
+		Str("globalPriceX", globalPriceX.String()).
+		Str("globalPriceY", globalPriceY.String()).
+		Str("globalPrice", globalPrice.String()).
+		Str("priceDiff", priceDiff.String()).
+		Msg("")
+
 	transaction := tx.NewTransaction(client, chainID)
 
+	switch {
 	// LUNA is overpriced / ATOM is underpriced / price diff is greater than 10%
-	if priceDiff.IsPositive() && priceDiff.GT(sdk.NewDecWithPrec(1, 1)) {
+	case priceDiff.IsPositive() && priceDiff.GT(sdk.NewDecWithPrec(1, 1)):
+		log.Info().Msgf("price diff is greater than 10%. selling %s and buying %s", reservePoolDenoms[0], reservePoolDenoms[1])
+
 		orderAmount := reserveAmtY.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2))) // LUNA = LUNARESERVE * MIN(abs(PRICEDIFF/2),0.01)
 		poolCreator := accAddr
 		poolId := uint64(1) // TODO: query pool id for generalization
@@ -124,16 +127,17 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 			Str("demandCoinDenom", demandCoinDenom).
 			Str("orderPrice", orderPrice.String()).
 			Str("swapFeeRate", swapFeeRate.String()).
-			Msg("selling LUNA and buying ATOM")
+			Msg("")
 
 		log.Info().
 			Str("TxHash", resp.GetTxResponse().TxHash).
 			Int64("Height", resp.GetTxResponse().Height).
 			Msg("result")
-	}
 
-	// LUNA is underpriced / ATOM is overpriced / price diff le than -10%
-	if priceDiff.IsNegative() && priceDiff.LT(sdk.NewDecWithPrec(-1, 1)) {
+	// LUNA is underpriced / ATOM is overpriced / price diff is less than -10%
+	case priceDiff.IsNegative() && priceDiff.LT(sdk.NewDecWithPrec(-1, 1)):
+		log.Info().Msgf("price diff is less than 10%. selling %s and buying %s", reservePoolDenoms[0], reservePoolDenoms[1])
+
 		orderAmount := reserveAmtX.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2))) // ATOM = ATOMRESERVE * MIN(abs(PRICEDIFF/2),0.01)
 		poolCreator := accAddr
 		poolId := uint64(1) // TODO: query pool id for generalization
@@ -172,6 +176,8 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 			Str("TxHash", resp.GetTxResponse().TxHash).
 			Int64("Height", resp.GetTxResponse().Height).
 			Msg("result")
+	default:
+		log.Info().Msg("pool price is already stabilized")
 	}
 
 	return nil
