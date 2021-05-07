@@ -34,8 +34,6 @@ cd gravity-dex-firestation
 go run main.go
 ```
 
-... 
-
 ## CoinMarketCap Symbols & Denoms
 
 - [CoinMarketCap API Documentation](https://coinmarketcap.com/api/documentation/v1/)
@@ -48,3 +46,21 @@ go run main.go
 | Akash Network | 7431 | AKT  | uakt  |
 | IRISnet       | 3874 | IRIS | uiris |
 | ... | ... |
+
+## Test 
+
+```bash 
+# Set up a local network
+make localnet
+
+# Create liquidity pool with two different coins
+liquidityd tx liquidity create-pool 1 248858766789uatom,235580364505uluna \
+--home ./data/localnet \
+--chain-id localnet \
+--from user1 \
+--keyring-backend test \
+--yes
+
+# Change config.toml and run
+go run main.go
+```

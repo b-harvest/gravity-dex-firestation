@@ -18,3 +18,4 @@ cmc_id_a = "3794" # ATOM
 cmc_id_b = "4172" # LUNA
 denom_a = "uatom"
 denom_b = "uluna"
+pool_id = 1

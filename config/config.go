@@ -58,6 +58,7 @@ var DefaultFireStationConfig = FireStationConfig{
 	CmcIdB: "4172", // LUNA
 	DenomA: "uatom",
 	DenomB: "uluna",
+	PoolId: uint64(1),
 }
 
 // FireStationConfig contains two different denoms and CoinMarketCap symbols.
@@ -66,6 +67,7 @@ type FireStationConfig struct {
 	CmcIdB string `toml:"cmc_id_b"`
 	DenomA string `toml:"denom_a"`
 	DenomB string `toml:"denom_b"`
+	PoolId uint64 `toml:"pool_id"`
 }
 
 // DefaultWalletConfig is the default WalletConfig.

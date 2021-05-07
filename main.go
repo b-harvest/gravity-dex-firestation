@@ -74,9 +74,8 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 		return fmt.Errorf("failed to get pool prices: %s", err)
 	}
 
-	poolPrice := reserveAmtX.Quo(reserveAmtY)     // POOLPRICE   = ATOMRESERVE/LUNARESERVE
-	globalPrice := globalPriceY.Quo(globalPriceX) // GLOBALPRICE = LUNAUSD/ATOMUSD
-	// globalPrice := globalPriceX.Quo(globalPriceY)              // GLOBALPRICE = ATOMUSD/LUNAUSD
+	poolPrice := reserveAmtX.Quo(reserveAmtY)                  // POOLPRICE   = ATOMRESERVE/LUNARESERVE
+	globalPrice := globalPriceY.Quo(globalPriceX)              // GLOBALPRICE = LUNAUSD/ATOMUSD
 	priceDiff := globalPrice.Quo(poolPrice).Sub(sdk.NewDec(1)) // PRICEDIFF   = GLOBALPRICE/POOLPRICE - 1
 
 	log.Debug().
@@ -98,7 +97,7 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 
 		orderAmount := reserveAmtX.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2))) // ATOM = ATOMRESERVE * MIN(abs(PRICEDIFF/2),0.01)
 		poolCreator := accAddr
-		poolId := uint64(1) // TODO: query pool id for generalization
+		poolId := cfg.FireStation.PoolId
 		swapTypeId := uint32(1)
 		offerCoin := sdk.NewCoin(cfg.FireStation.DenomA, orderAmount.RoundInt()) // truncated
 		demandCoinDenom := cfg.FireStation.DenomB
@@ -141,7 +140,7 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 
 		orderAmount := reserveAmtY.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2))) // LUNA = LUNARESERVE * MIN(abs(PRICEDIFF/2),0.01)
 		poolCreator := accAddr
-		poolId := uint64(1) // TODO: query pool id for generalization
+		poolId := cfg.FireStation.PoolId
 		swapTypeId := uint32(1)
 		offerCoin := sdk.NewCoin(cfg.FireStation.DenomB, orderAmount.RoundInt()) // truncated
 		demandCoinDenom := cfg.FireStation.DenomA
