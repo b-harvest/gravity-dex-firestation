@@ -34,8 +34,8 @@ api_key = "YOUR_API_KEY"
 mnemonic = "<YOUR_MNEMONIC>"
 
 [firestation]
-cmc_symbol_a = "ATOM"
-cmc_symbol_b = "LUNA"
+cmc_id_a = "3794"
+cmc_id_b = "4172"
 denom_a = "uatom"
 denom_b = "uluna"
 `

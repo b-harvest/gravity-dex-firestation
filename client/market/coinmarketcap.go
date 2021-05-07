@@ -45,10 +45,10 @@ type CoinMarketCapResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
-func (c *Client) request(ctx context.Context, params string, symbols []string) (CoinMarketCapResponse, error) {
+func (c *Client) request(ctx context.Context, params string, ids []string) (CoinMarketCapResponse, error) {
 	resp, err := c.client.R().
 		SetQueryParams(map[string]string{
-			"symbol":  strings.Join(symbols, ","),
+			"id":      strings.Join(ids, ","),
 			"convert": currency,
 		}).
 		SetHeader(cmcAPIKeyHeaderName, c.cfg.APIKey).
@@ -71,8 +71,8 @@ func (c *Client) request(ctx context.Context, params string, symbols []string) (
 	return r, nil
 }
 
-func (c *Client) GetMarketPrices(ctx context.Context, symbols []string) (sdk.Dec, sdk.Dec, error) {
-	resp, err := c.request(ctx, "/v1/cryptocurrency/quotes/latest", symbols)
+func (c *Client) GetMarketPrices(ctx context.Context, ids []string) (sdk.Dec, sdk.Dec, error) {
+	resp, err := c.request(ctx, "/v1/cryptocurrency/quotes/latest", ids)
 	if err != nil {
 		return sdk.ZeroDec(), sdk.ZeroDec(), fmt.Errorf("failed to get pool prices: %s", err)
 	}
@@ -91,21 +91,21 @@ func (c *Client) GetMarketPrices(ctx context.Context, symbols []string) (sdk.Dec
 	}
 
 	var priceX, priceY sdk.Dec
-	for _, symbol := range symbols {
-		symbol = strings.ToUpper(symbol)
+	for _, id := range ids {
+		id = strings.ToUpper(id)
 
-		d, ok := data[symbol]
+		d, ok := data[id]
 		if !ok {
 			return sdk.ZeroDec(), sdk.ZeroDec(), fmt.Errorf("price for symbol %s not found", symbol)
 		}
 
 		// another way to convert float64 type to sdk.Dec
 		// sdk.NewDecWithPrec(int64(f * 1000000), 6)
-		if symbol == symbols[0] {
+		if id == ids[0] {
 			priceX, _ = sdk.NewDecFromStr(fmt.Sprintf("%f", d.Quote.USD.Price))
 		}
 
-		if symbol == symbols[1] {
+		if id == ids[1] {
 			priceY, _ = sdk.NewDecFromStr(fmt.Sprintf("%f", d.Quote.USD.Price))
 		}
 	}
