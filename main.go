@@ -62,7 +62,7 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 	}
 
 	poolPrice := reserveAmtX.Quo(reserveAmtY)                  // POOLPRICE   = ATOMRESERVE/LUNARESERVE
-	globalPrice := priceX.Quo(priceY)                          // GLOBALPRICE = LUNAUSD/ATOMUSD
+	globalPrice := priceY.Quo(priceX)                          // GLOBALPRICE = LUNAUSD/ATOMUSD
 	priceDiff := globalPrice.Quo(poolPrice).Sub(sdk.NewDec(1)) // PRICEDIFF   = GLOBALPRICE/POOLPRICE - 1
 
 	log.Debug().
