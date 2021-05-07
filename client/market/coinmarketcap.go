@@ -96,7 +96,7 @@ func (c *Client) GetMarketPrices(ctx context.Context, ids []string) (sdk.Dec, sd
 
 		d, ok := data[id]
 		if !ok {
-			return sdk.ZeroDec(), sdk.ZeroDec(), fmt.Errorf("price for symbol %s not found", symbol)
+			return sdk.ZeroDec(), sdk.ZeroDec(), fmt.Errorf("price for the id %s not found", id)
 		}
 
 		// another way to convert float64 type to sdk.Dec

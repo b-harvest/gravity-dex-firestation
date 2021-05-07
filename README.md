@@ -38,6 +38,9 @@ go run main.go
 
 ## CoinMarketCap Symbols & Denoms
 
+- [CoinMarketCap API Documentation](https://coinmarketcap.com/api/documentation/v1/)
+- [Listings Latest](https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=5000): Your own API key is required to query this API.
+
 | name | id | symbol | denom |
 |---|---|---|---|
 | Cosmos Hub    | 3794 | ATOM | uatom |

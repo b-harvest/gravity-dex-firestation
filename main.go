@@ -93,7 +93,7 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 	switch {
 	// LUNA is overpriced / ATOM is underpriced / price diff is greater than 10%
 	case priceDiff.IsPositive() && priceDiff.GT(sdk.NewDecWithPrec(1, 1)):
-		log.Info().Msgf("priceDiff is positive; selling '%s' and buying '%s'", reservePoolDenoms[0], reservePoolDenoms[1])
+		log.Info().Msgf("priceDiff is positive; selling '%s' buying '%s'", reservePoolDenoms[0], reservePoolDenoms[1])
 
 		orderAmount := reserveAmtY.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2))) // LUNA = LUNARESERVE * MIN(abs(PRICEDIFF/2),0.01)
 		poolCreator := accAddr
