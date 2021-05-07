@@ -17,11 +17,12 @@ var (
 type Config struct {
 	RPC           RPCConfig           `toml:"rpc"`
 	GRPC          GRPCConfig          `toml:"grpc"`
-	LCD           LCDConfig           `toml:"lcd"`
+	Wallet        WalletConfig        `toml:"wallet"`
 	CoinMarketCap CoinMarketCapConfig `toml:"coinmarketcap"`
+	FireStation   FireStationConfig   `toml:"firestation"`
 }
 
-// DefaultRPCConfig is the default RPC config.
+// DefaultRPCConfig is the default RPCConfig.
 var DefaultRPCConfig = RPCConfig{
 	Address: "http://localhost:26657",
 }
@@ -31,7 +32,7 @@ type RPCConfig struct {
 	Address string `toml:"address"`
 }
 
-// DefaultGRPCConfig is the default gRPC config.
+// DefaultGRPCConfig is the default GRPCConfig.
 var DefaultGRPCConfig = GRPCConfig{
 	Address: "localhost:9090",
 }
@@ -41,17 +42,7 @@ type GRPCConfig struct {
 	Address string `toml:"address"`
 }
 
-// DefaultLCDConfig is the default REST API endpoint config.
-var DefaultLCDConfig = LCDConfig{
-	Address: "http://localhost:1317",
-}
-
-// LCDConfig contains the configuration of the REST server endpoint.
-type LCDConfig struct {
-	Address string `toml:"address"`
-}
-
-// DefaultCoinMarketCapConfig is the default CoinMarketCap config.
+// DefaultCoinMarketCapConfig is the default CoinMarketCap.
 var DefaultCoinMarketCapConfig = CoinMarketCapConfig{
 	APIKey: "",
 }
@@ -61,22 +52,47 @@ type CoinMarketCapConfig struct {
 	APIKey string `toml:"api_key"`
 }
 
+// DefaultFireStationConfig is the default FireStationConfig.
+var DefaultFireStationConfig = FireStationConfig{
+	CmcSymbolA: "ATOM",
+	CmcSymbolB: "LUNA",
+	DenomA:     "uatom",
+	DenomB:     "uluna",
+}
+
+// FireStationConfig contains two different denoms and CoinMarketCap symbols.
+type FireStationConfig struct {
+	CmcSymbolA string `toml:"cmc_symbol_a"`
+	CmcSymbolB string `toml:"cmc_symbol_b"`
+	DenomA     string `toml:"denom_a"`
+	DenomB     string `toml:"denom_b"`
+}
+
+// DefaultWalletConfig is the default WalletConfig.
+var DefaultWalletConfig = WalletConfig{
+	Mnemonic: "",
+}
+
+// WalletConfig contains mnemonic which should have sufficient balances to stabilize pool price.
+type WalletConfig struct {
+	Mnemonic string `toml:"mnemonic"`
+}
+
 // DefaultConfig returns default Config object.
 func DefaultConfig() Config {
 	return Config{
 		RPC:           DefaultRPCConfig,
 		GRPC:          DefaultGRPCConfig,
-		LCD:           DefaultLCDConfig,
 		CoinMarketCap: DefaultCoinMarketCapConfig,
+		FireStation:   DefaultFireStationConfig,
 	}
 }
 
 // NewConfig builds a new Config object.
-func NewConfig(rpc RPCConfig, gRPC GRPCConfig, lcd LCDConfig, coinmarketcap CoinMarketCapConfig) Config {
+func NewConfig(rpc RPCConfig, gRPC GRPCConfig, coinmarketcap CoinMarketCapConfig) Config {
 	return Config{
 		RPC:           rpc,
 		GRPC:          gRPC,
-		LCD:           lcd,
 		CoinMarketCap: coinmarketcap,
 	}
 }

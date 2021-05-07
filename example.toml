@@ -9,3 +9,12 @@ address = "http://localhost:1317"
 
 [coinmarketcap]
 api_key = "<YOUR_API_KEY>"
+
+[wallet]
+mnemonic = "<YOUR_MNEMONIC>"
+
+[firestation]
+cmc_symbol_a = "ATOM"
+cmc_symbol_b = "LUNA"
+denom_a = "uatom"
+denom_b = "uluna"

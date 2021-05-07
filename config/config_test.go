@@ -16,7 +16,7 @@ func TestReadConfigFile(t *testing.T) {
 
 	require.Equal(t, "http://localhost:26657", cfg.RPC.Address)
 	require.Equal(t, "localhost:9090", cfg.GRPC.Address)
-	require.Equal(t, "http://localhost:1317", cfg.LCD.Address)
+	require.Equal(t, "YOUR_API_KEY", cfg.CoinMarketCap.APIKey)
 }
 
 func TestParseConfigString(t *testing.T) {
@@ -27,17 +27,22 @@ address = "http://localhost:26657"
 [grpc]
 address = "localhost:9090"
 
-[lcd]
-address = "http://localhost:1317"
-
 [coinmarketcap]
 api_key = "YOUR_API_KEY"
+
+[wallet]
+mnemonic = "<YOUR_MNEMONIC>"
+
+[firestation]
+cmc_symbol_a = "ATOM"
+cmc_symbol_b = "LUNA"
+denom_a = "uatom"
+denom_b = "uluna"
 `
 	cfg, err := config.ParseString([]byte(sampleConfig))
 	require.NoError(t, err)
 
 	require.Equal(t, "http://localhost:26657", cfg.RPC.Address)
 	require.Equal(t, "localhost:9090", cfg.GRPC.Address)
-	require.Equal(t, "http://localhost:1317", cfg.LCD.Address)
 	require.Equal(t, "YOUR_API_KEY", cfg.CoinMarketCap.APIKey)
 }
