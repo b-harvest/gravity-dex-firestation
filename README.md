@@ -54,7 +54,7 @@ go run main.go
 make localnet
 
 # Create liquidity pool with two different coins
-liquidityd tx liquidity create-pool 1 248858766789uatom,235580364505uluna \
+liquidityd tx liquidity create-pool 1 312098329313uatom,369915019230uluna \
 --home ./data/localnet \
 --chain-id localnet \
 --from user1 \
