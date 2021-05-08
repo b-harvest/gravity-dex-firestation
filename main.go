@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/b-harvest/gravity-dex-firestation/client"
@@ -31,6 +30,8 @@ func main() {
 
 	for {
 		stablizePoolPrice(ctx, cfg, client)
+
+		time.Sleep(15 * time.Minute)
 	}
 }
 
@@ -139,7 +140,7 @@ func stablizePoolPrice(ctx context.Context, cfg config.Config, client *client.Cl
 			// exit when price diff is satified with the condition
 			if priceDiff.Abs().LTE(sdk.NewDecWithPrec(1, 10)) {
 				log.Println("gap between pool and global prices is 0.0000000001 percent now...!")
-				os.Exit(1)
+				return nil
 			}
 
 			txBytes, err := transaction.Sign(ctx, accSeq, accNum, privKey, msg)
@@ -214,7 +215,7 @@ func stablizePoolPrice(ctx context.Context, cfg config.Config, client *client.Cl
 			// exit when price diff is satified with the condition
 			if priceDiff.Abs().LTE(sdk.NewDecWithPrec(1, 10)) {
 				log.Println("❗ gap between pool and global prices is 0.0000000001 percent now ❗")
-				os.Exit(1)
+				return nil
 			}
 
 			txBytes, err := transaction.Sign(ctx, accSeq, accNum, privKey, msg)
