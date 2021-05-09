@@ -86,7 +86,7 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 	transaction := tx.NewTransaction(client, chainID, fees)
 
 	switch {
-	case priceDiff.GTE(sdk.NewDecWithPrec(1, 1)):
+	case priceDiff.GTE(sdk.NewDecWithPrec(2, 1)):
 		log.Printf("🔥 priceDiff is greater than equal to %s; selling '%s' buying '%s'\n", sdk.NewDecWithPrec(2, 1).String(), reservePoolDenoms[0], reservePoolDenoms[1])
 
 		orderAmount := reserveAmtX.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2))) // ATOM = ATOMRESERVE * MIN(abs(PRICEDIFF/2),0.01)
@@ -139,8 +139,8 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 			log.Println("-------------------------------------------------------------")
 
 			// exit when price diff is satified with the condition
-			if priceDiff.Abs().LTE(sdk.NewDecWithPrec(1, 10)) {
-				log.Println("❗ gap between pool and global prices is 0.0000000001 percent now ❗")
+			if priceDiff.Abs().LTE(sdk.NewDecWithPrec(1, 2)) {
+				log.Println("❗ gap between pool and global prices is 0.01 percent now ❗")
 				return nil
 			}
 
@@ -160,7 +160,7 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 			time.Sleep(3 * time.Second)
 		}
 
-	case priceDiff.LTE(sdk.NewDecWithPrec(-1, 1)):
+	case priceDiff.LTE(sdk.NewDecWithPrec(-2, 1)):
 		log.Printf("🔥 priceDiff is less than %s; selling '%s' and buying '%s'\n", sdk.NewDecWithPrec(-1, 1).String(), reservePoolDenoms[1], reservePoolDenoms[0])
 
 		orderAmount := reserveAmtY.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2))) // LUNA = LUNARESERVE * MIN(abs(PRICEDIFF/2),0.01)
@@ -213,8 +213,8 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 			log.Println("-------------------------------------------------------------")
 
 			// exit when price diff is satified with the condition
-			if priceDiff.Abs().LTE(sdk.NewDecWithPrec(1, 10)) {
-				log.Println("❗ gap between pool and global prices is 0.0000000001 percent now ❗")
+			if priceDiff.Abs().LTE(sdk.NewDecWithPrec(1, 2)) {
+				log.Println("❗ gap between pool and global prices is 0.01 percent now ❗")
 				return nil
 			}
 
