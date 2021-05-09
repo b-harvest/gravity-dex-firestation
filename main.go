@@ -15,9 +15,6 @@ import (
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	cfg, err := config.Read(config.DefaultConfigPath)
 	if err != nil {
 		log.Fatalf("failed to read config: %s", err)
@@ -29,7 +26,7 @@ func main() {
 	}
 
 	for {
-		stablizePoolPrice(ctx, cfg, client)
+		stablizePoolPrice(cfg, client)
 
 		time.Sleep(15 * time.Minute)
 	}
@@ -37,8 +34,11 @@ func main() {
 
 // stablizePoolPrice stablizes pool price of ATOM/LUNA pool.
 // This provides users arbitrage opportunity for overpriced luna by managing the pool price.
-func stablizePoolPrice(ctx context.Context, cfg config.Config, client *client.Client) error {
-	log.Println("stablizing pool price...")
+func stablizePoolPrice(cfg config.Config, client *client.Client) error {
+	log.Println("🔥 stablizing pool price...")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	chainID, err := client.RPC.GetNetworkChainID(ctx)
 	if err != nil {
@@ -70,7 +70,9 @@ func stablizePoolPrice(ctx context.Context, cfg config.Config, client *client.Cl
 
 	log.Println("-----------------------------------------------------------------")
 	log.Printf("| chainID: %s\n", chainID)
+	log.Printf("| sender: %s\n", accAddr)
 	log.Printf("| fees: %s\n", fees.String())
+	log.Println("-----------------------------------------------------------------")
 	log.Printf("| reserveAmtX: %s\n", reserveAmtX.String())
 	log.Printf("| reserveAmtY: %s\n", reserveAmtY.String())
 	log.Printf("| globalPriceX: %s\n", globalPriceX.String())
@@ -84,9 +86,8 @@ func stablizePoolPrice(ctx context.Context, cfg config.Config, client *client.Cl
 	transaction := tx.NewTransaction(client, chainID, fees)
 
 	switch {
-	// price diff is greater than 20%
-	case priceDiff.GTE(sdk.NewDecWithPrec(2, 1)):
-		log.Printf("🔥 priceDiff is positive; selling '%s' buying '%s'\n", reservePoolDenoms[0], reservePoolDenoms[1])
+	case priceDiff.GTE(sdk.NewDecWithPrec(1, 1)):
+		log.Printf("🔥 priceDiff is greater than equal to %s; selling '%s' buying '%s'\n", sdk.NewDecWithPrec(2, 1).String(), reservePoolDenoms[0], reservePoolDenoms[1])
 
 		orderAmount := reserveAmtX.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2))) // ATOM = ATOMRESERVE * MIN(abs(PRICEDIFF/2),0.01)
 		offerCoin := sdk.NewCoin(cfg.FireStation.DenomA, orderAmount.RoundInt())                                 // truncated
@@ -139,7 +140,7 @@ func stablizePoolPrice(ctx context.Context, cfg config.Config, client *client.Cl
 
 			// exit when price diff is satified with the condition
 			if priceDiff.Abs().LTE(sdk.NewDecWithPrec(1, 10)) {
-				log.Println("gap between pool and global prices is 0.0000000001 percent now...!")
+				log.Println("❗ gap between pool and global prices is 0.0000000001 percent now ❗")
 				return nil
 			}
 
@@ -156,12 +157,11 @@ func stablizePoolPrice(ctx context.Context, cfg config.Config, client *client.Cl
 			log.Printf("TxHash: %s\n", resp.GetTxResponse().TxHash)
 			log.Printf("Height: %d\n\n", resp.GetTxResponse().Height)
 
-			time.Sleep(1 * time.Second)
+			time.Sleep(3 * time.Second)
 		}
 
-	// price diff is greater than -20%%
-	case priceDiff.LTE(sdk.NewDecWithPrec(-2, 1)):
-		log.Printf("🔥 priceDiff is negative; selling '%s' and buying '%s'\n", reservePoolDenoms[1], reservePoolDenoms[0])
+	case priceDiff.LTE(sdk.NewDecWithPrec(-1, 1)):
+		log.Printf("🔥 priceDiff is less than %s; selling '%s' and buying '%s'\n", sdk.NewDecWithPrec(-1, 1).String(), reservePoolDenoms[1], reservePoolDenoms[0])
 
 		orderAmount := reserveAmtY.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2))) // LUNA = LUNARESERVE * MIN(abs(PRICEDIFF/2),0.01)
 		offerCoin := sdk.NewCoin(cfg.FireStation.DenomB, orderAmount.RoundInt())                                 // truncated
@@ -231,7 +231,7 @@ func stablizePoolPrice(ctx context.Context, cfg config.Config, client *client.Cl
 			log.Printf("TxHash: %s\n", resp.GetTxResponse().TxHash)
 			log.Printf("Height: %d\n\n", resp.GetTxResponse().Height)
 
-			time.Sleep(1 * time.Second)
+			time.Sleep(3 * time.Second)
 		}
 
 	default:
