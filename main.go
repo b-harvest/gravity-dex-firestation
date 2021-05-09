@@ -20,10 +20,10 @@ var (
 	remainingAmountPerHour = int64(1_000_000_000)
 
 	// sending amount of dollars worth of coins to send for each buy and sell tx
-	sendAmount = int64(138888)
+	sendAmount = int64(69444)
 
-	// sleep 5 seconds for each frequency
-	frequency = 1800
+	// sleep 1 seconds for each frequency
+	frequency = 3600
 
 	// number of hours
 	duration = 22
@@ -207,21 +207,21 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 			log.Printf("| ✅ orderPriceY: %s\n", orderPriceY)
 		}
 
-		for k, txByte := range txBytes {
-			resp, err := transaction.BroadcastTx(ctx, txByte)
-			if err != nil {
-				return fmt.Errorf("failed to broadcast transaction: %s", err)
-			}
-			log.Println("----------------------------------------------------------------[Sending Tx] [", k+1, " out of 4 pools]")
-			log.Printf("| TxHash: %s\n", resp.GetTxResponse().TxHash)
-			log.Printf("| Height: %d\n", resp.GetTxResponse().Height)
-		}
+		// for k, txByte := range txBytes {
+		// 	resp, err := transaction.BroadcastTx(ctx, txByte)
+		// 	if err != nil {
+		// 		return fmt.Errorf("failed to broadcast transaction: %s", err)
+		// 	}
+		// 	log.Println("----------------------------------------------------------------[Sending Tx] [", k+1, " out of 4 pools]")
+		// 	log.Printf("| TxHash: %s\n", resp.GetTxResponse().TxHash)
+		// 	log.Printf("| Height: %d\n", resp.GetTxResponse().Height)
+		// }
 
 		log.Println("----------------------------------------------------------------")
 		fmt.Println("")
 		fmt.Println("")
 
-		time.Sleep(2 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 
 	return nil
