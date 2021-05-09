@@ -7,6 +7,7 @@ require (
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/go-resty/resty/v2 v2.6.0
 	github.com/pelletier/go-toml v1.9.0
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/zerolog v1.21.0
 	github.com/stretchr/testify v1.7.0
 	github.com/tendermint/liquidity v1.2.5
