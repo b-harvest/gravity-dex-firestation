@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/b-harvest/gravity-dex-firestation/config"
+	"github.com/b-harvest/gravity-dex-firestation/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -71,13 +72,14 @@ func (c *Client) request(ctx context.Context, params string, ids []string) (Coin
 	return r, nil
 }
 
-func (c *Client) GetMarketPrices(ctx context.Context, ids []string) ([]sdk.Dec, error) {
+func (c *Client) GetMarketPrices(ctx context.Context, ids []string) ([]types.CoinMarketCapDataResult, error) {
 	resp, err := c.request(ctx, "/v1/cryptocurrency/quotes/latest", ids)
 	if err != nil {
-		return []sdk.Dec{}, fmt.Errorf("failed to get pool prices: %s", err)
+		return []types.CoinMarketCapDataResult{}, fmt.Errorf("failed to get pool prices: %s", err)
 	}
 
 	var data map[string]struct {
+		Id    int64 `json:"id"`
 		Quote struct {
 			USD struct {
 				Price float64 `json:"price"`
@@ -87,23 +89,28 @@ func (c *Client) GetMarketPrices(ctx context.Context, ids []string) ([]sdk.Dec, 
 
 	err = json.Unmarshal(resp.Data, &data)
 	if err != nil {
-		return []sdk.Dec{}, fmt.Errorf("failed to unmarshal market data: %s", err)
+		return []types.CoinMarketCapDataResult{}, fmt.Errorf("failed to unmarshal market data: %s", err)
 	}
 
-	var globalPrices []sdk.Dec
+	var result []types.CoinMarketCapDataResult
 	for i, id := range ids {
 		id = strings.ToUpper(id)
 
 		d, ok := data[id]
 		if !ok {
-			return []sdk.Dec{}, fmt.Errorf("price for the id %s not found", id)
+			return []types.CoinMarketCapDataResult{}, fmt.Errorf("price for the id %s not found", id)
 		}
 
 		if id == ids[i] {
 			price, _ := sdk.NewDecFromStr(fmt.Sprintf("%f", d.Quote.USD.Price))
-			globalPrices = append(globalPrices, price)
+
+			temp := types.CoinMarketCapDataResult{
+				Id:    id,
+				Price: price,
+			}
+			result = append(result, temp)
 		}
 	}
 
-	return globalPrices, nil
+	return result, nil
 }

@@ -52,15 +52,44 @@ type CoinMarketCapConfig struct {
 	APIKey string `toml:"api_key"`
 }
 
-var CoinMarketCapMetadata = map[string]string{
-	"uatom": "3794",
-	"ubtsg": "8905",
-	"udvpn": "2643",
-	"uxprt": "7281",
-	"uakt":  "7431",
-	"uluna": "4172",
-	"ungm":  "8279",
-	"uiris": "3874",
+var DefaultCoinMarketCapMetadata = []CoinMarketCapMetadata{
+	{
+		Denom: "uatom",
+		Id:    "3794",
+	},
+	{
+		Denom: "ubtsg",
+		Id:    "8905",
+	},
+	{
+		Denom: "udvpn",
+		Id:    "2643",
+	},
+	{
+		Denom: "uxprt",
+		Id:    "7281",
+	},
+	{
+		Denom: "uakt",
+		Id:    "7431",
+	},
+	{
+		Denom: "uluna",
+		Id:    "4172",
+	},
+	{
+		Denom: "ungm",
+		Id:    "8279",
+	},
+	{
+		Denom: "uiris",
+		Id:    "3874",
+	},
+}
+
+type CoinMarketCapMetadata struct {
+	Denom string
+	Id    string
 }
 
 // DefaultFireStationConfig is the default FireStationConfig.

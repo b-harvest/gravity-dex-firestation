@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/b-harvest/gravity-dex-firestation/client"
 	"github.com/b-harvest/gravity-dex-firestation/config"
 	"github.com/b-harvest/gravity-dex-firestation/tx"
+	"github.com/b-harvest/gravity-dex-firestation/types"
 	"github.com/b-harvest/gravity-dex-firestation/util"
 	"github.com/b-harvest/gravity-dex-firestation/wallet"
 
@@ -15,9 +17,10 @@ import (
 )
 
 var (
-	remainingAmountPerHour = int64(1_000_000_000) // total trading volume has to be $1,000,000,000 every hour.
+	remainingAmountPerHour = int64(1_000_000_000) // total trading volume has to be $100,000,000 every hour.
 	sendAmount             = int64(694_444)       // uses every frequency (694444 x 4 x 360 = 999999360 which is close to 1000000000)
-	frequency              = 2
+	frequency              = 1
+	duration               = 24
 )
 
 func main() {
@@ -30,6 +33,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create new config: %s", err)
 	}
+
+	// for i := 0; i < duration; i++ {
+	// 	impactTradingVolume(cfg, client)
+
+	// 	time.Sleep(1 * time.Hour)
+	// }
 
 	impactTradingVolume(cfg, client)
 }
@@ -59,10 +68,10 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 	fees := sdk.NewCoins(sdk.NewCoin(cfg.FireStation.FeeDenom, sdk.NewInt(cfg.FireStation.FeeAmount)))
 	transaction := tx.NewTransaction(client, chainID, fees)
 
+	log.Println("----------------------------------------------------------------")
 	log.Printf("| ✅ ChainID: %s\n", chainID)
 	log.Printf("| ✅ Sender: %s\n", accAddr)
 	log.Printf("| ✅ Fees: %s\n", fees.String())
-	log.Println("----------------------------------------------------------------")
 
 	pools, _ := client.GRPC.GetAllPools(context.Background())
 	pools = util.Shuffle(pools)   // shuffle the exisiting pools and remove the ones that are not listed in CoinMarketCap
@@ -73,21 +82,25 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 	log.Printf("| pool 2: %s\n", pools[1].String())
 	log.Printf("| pool 3: %s\n", pools[2].String())
 	log.Printf("| pool 4: %s\n", pools[3].String())
+	log.Printf("| pool 1 ReserveCoinDenoms: %s\n", pools[0].ReserveCoinDenoms)
+	log.Printf("| pool 2 ReserveCoinDenoms: %s\n", pools[1].ReserveCoinDenoms)
+	log.Printf("| pool 3 ReserveCoinDenoms: %s\n", pools[2].ReserveCoinDenoms)
+	log.Printf("| pool 4 ReserveCoinDenoms: %s\n", pools[3].ReserveCoinDenoms)
 	log.Println("----------------------------------------------------------------")
 
 	ids := []string{
-		config.CoinMarketCapMetadata[pools[0].ReserveCoinDenoms[0]],
-		config.CoinMarketCapMetadata[pools[0].ReserveCoinDenoms[1]],
-		config.CoinMarketCapMetadata[pools[1].ReserveCoinDenoms[0]],
-		config.CoinMarketCapMetadata[pools[1].ReserveCoinDenoms[1]],
-		config.CoinMarketCapMetadata[pools[2].ReserveCoinDenoms[0]],
-		config.CoinMarketCapMetadata[pools[2].ReserveCoinDenoms[1]],
-		config.CoinMarketCapMetadata[pools[3].ReserveCoinDenoms[0]],
-		config.CoinMarketCapMetadata[pools[3].ReserveCoinDenoms[1]],
+		types.CoinMarketCapMetadata[pools[0].ReserveCoinDenoms[0]],
+		types.CoinMarketCapMetadata[pools[0].ReserveCoinDenoms[1]],
+		types.CoinMarketCapMetadata[pools[1].ReserveCoinDenoms[0]],
+		types.CoinMarketCapMetadata[pools[1].ReserveCoinDenoms[1]],
+		types.CoinMarketCapMetadata[pools[2].ReserveCoinDenoms[0]],
+		types.CoinMarketCapMetadata[pools[2].ReserveCoinDenoms[1]],
+		types.CoinMarketCapMetadata[pools[3].ReserveCoinDenoms[0]],
+		types.CoinMarketCapMetadata[pools[3].ReserveCoinDenoms[1]],
 	}
 
 	// request global prices only once to prevent from overuse
-	globalPrices, err := client.Market.GetMarketPrices(ctx, ids)
+	market, err := client.Market.GetMarketPrices(ctx, ids)
 	if err != nil {
 		return fmt.Errorf("failed to get pool prices: %s", err)
 	}
@@ -98,8 +111,19 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 		var txBytes [][]byte
 
 		for i, p := range pools {
-			globalPriceX := globalPrices[i]
-			globalPriceY := globalPrices[i+1]
+			ids := []string{
+				types.CoinMarketCapMetadata[p.ReserveCoinDenoms[0]],
+				types.CoinMarketCapMetadata[p.ReserveCoinDenoms[1]],
+			}
+
+			marketResponses, err := client.Market.GetMarketPrices(ctx, ids)
+			if err != nil {
+				return fmt.Errorf("failed to get pool prices: %s", err)
+			}
+
+			globalPriceX := marketResponses[0].Price
+			globalPriceY := marketResponses[1].Price
+
 			denomX := p.ReserveCoinDenoms[0]
 			denomY := p.ReserveCoinDenoms[1]
 
@@ -120,13 +144,13 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 			swapFeeRate := sdk.NewDecWithPrec(3, 3)
 
 			// swap denomY for denomX (buy)
-			orderAmountX := sdk.NewDec(sendAmount / 4).Quo(globalPriceX)
+			orderAmountX := sdk.NewDec(sendAmount / 4).Quo(globalPriceX).Mul(sdk.NewDec(1_000_000))
 			offerCoinX := sdk.NewCoin(denomX, orderAmountX.RoundInt())        // truncated
 			demandCoinDenomX := denomY                                        // the other side of pair
 			orderPriceX := reservePoolPrice.Mul(sdk.MustNewDecFromStr("1.2")) // multiply pool price by 1.2 to buy higher price
 
 			// swap denomX for denomY (sell)
-			orderAmountY := sdk.NewDec(sendAmount / 4).Quo(globalPriceY)
+			orderAmountY := sdk.NewDec(sendAmount / 4).Quo(globalPriceY).Mul(sdk.NewDec(1_000_000))
 			offerCoinY := sdk.NewCoin(denomY, orderAmountY.RoundInt())        // truncated
 			demandCoinDenomY := denomX                                        // the other side of pair
 			orderPriceY := reservePoolPrice.Mul(sdk.MustNewDecFromStr("0.8")) // multiply pool price by 0.8 to sell cheaper price
@@ -199,7 +223,7 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 		fmt.Println("")
 		fmt.Println("")
 
-		// time.Sleep(10 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 
 	return nil

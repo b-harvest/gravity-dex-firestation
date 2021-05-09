@@ -4,8 +4,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/b-harvest/gravity-dex-firestation/config"
-
+	"github.com/b-harvest/gravity-dex-firestation/types"
 	liqtypes "github.com/tendermint/liquidity/x/liquidity/types"
 )
 
@@ -13,12 +12,12 @@ import (
 func Shuffle(pools liqtypes.Pools) liqtypes.Pools {
 	var cmcListedPools liqtypes.Pools
 
-	// Note: remove the coins that are not listed in CoinMarketCap due to time limitation
+	// remove the coins that are not listed in CoinMarketCap due to time limitation
 	for _, p := range pools {
 		denomX := p.ReserveCoinDenoms[0]
 		denomY := p.ReserveCoinDenoms[1]
 
-		if config.CoinMarketCapMetadata[denomX] == "" || config.CoinMarketCapMetadata[denomY] == "" {
+		if types.CoinMarketCapMetadata[denomX] == "" || types.CoinMarketCapMetadata[denomY] == "" {
 			continue
 		}
 		cmcListedPools = append(cmcListedPools, p)
