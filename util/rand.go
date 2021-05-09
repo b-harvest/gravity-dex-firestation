@@ -29,7 +29,7 @@ func Shuffle(pools liqtypes.Pools) liqtypes.Pools {
 	return cmcListedPools
 }
 
-func Random(pools liqtypes.Pools, n int) liqtypes.Pools {
+func Select(pools liqtypes.Pools, n int) liqtypes.Pools {
 	var r liqtypes.Pools
 	for i := 0; i < n; i++ {
 		r = append(r, pools[i])

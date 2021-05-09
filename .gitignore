@@ -22,3 +22,6 @@ config.toml
 
 # test
 test
+
+# log
+*.log

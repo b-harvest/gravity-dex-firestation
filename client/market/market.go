@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/b-harvest/gravity-dex-firestation/config"
-	"github.com/b-harvest/gravity-dex-firestation/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -16,6 +16,8 @@ import (
 )
 
 const (
+	backendBaseAPIURL = "https://competition.bharvest.io:8081/"
+
 	cmcAPIBaseURL       = "https://pro-api.coinmarketcap.com/"
 	cmcAPIKeyHeaderName = "X-CMC_PRO_API_KEY"
 	currency            = "USD"
@@ -72,45 +74,45 @@ func (c *Client) request(ctx context.Context, params string, ids []string) (Coin
 	return r, nil
 }
 
-func (c *Client) GetMarketPrices(ctx context.Context, ids []string) ([]types.CoinMarketCapDataResult, error) {
-	resp, err := c.request(ctx, "/v1/cryptocurrency/quotes/latest", ids)
+func (c *Client) GetMarketPrices(ctx context.Context, targetDenoms []string) ([]sdk.Dec, error) {
+	prices, err := c.GetBackendPrices()
 	if err != nil {
-		return []types.CoinMarketCapDataResult{}, fmt.Errorf("failed to get pool prices: %s", err)
+		return []sdk.Dec{}, fmt.Errorf("failed to get pool prices: %s", err)
 	}
 
-	var data map[string]struct {
-		Id    int64 `json:"id"`
-		Quote struct {
-			USD struct {
-				Price float64 `json:"price"`
-			} `json:"USD"`
-		} `json:"quote"`
-	}
+	var result []sdk.Dec
 
-	err = json.Unmarshal(resp.Data, &data)
-	if err != nil {
-		return []types.CoinMarketCapDataResult{}, fmt.Errorf("failed to unmarshal market data: %s", err)
-	}
-
-	var result []types.CoinMarketCapDataResult
-	for i, id := range ids {
-		id = strings.ToUpper(id)
-
-		d, ok := data[id]
-		if !ok {
-			return []types.CoinMarketCapDataResult{}, fmt.Errorf("price for the id %s not found", id)
-		}
-
-		if id == ids[i] {
-			price, _ := sdk.NewDecFromStr(fmt.Sprintf("%f", d.Quote.USD.Price))
-
-			temp := types.CoinMarketCapDataResult{
-				Id:    id,
-				Price: price,
-			}
-			result = append(result, temp)
-		}
+	for _, d := range targetDenoms {
+		denom := prices[d[1:]]
+		result = append(result, sdk.MustNewDecFromStr(strconv.FormatFloat(denom, 'f', 6, 64)))
 	}
 
 	return result, nil
+}
+
+type PricesData struct {
+	BlockHeight int64              `json:"blockHeight"`
+	Prices      map[string]float64 `json:"prices"`
+	UpdatedAt   time.Time          `json:"updatedAt"`
+}
+
+func (c *Client) GetBackendPrices() (map[string]float64, error) {
+	client := resty.New().SetHostURL(backendBaseAPIURL).SetTimeout(time.Duration(5 * time.Second))
+
+	resp, err := client.R().Get("prices")
+	if err != nil {
+		return map[string]float64{}, err
+	}
+
+	if resp.IsError() {
+		return map[string]float64{}, err
+	}
+
+	var data PricesData
+	err = json.Unmarshal(resp.Body(), &data)
+	if err != nil {
+		return map[string]float64{}, err
+	}
+
+	return data.Prices, nil
 }
