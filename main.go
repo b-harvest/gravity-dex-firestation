@@ -17,7 +17,7 @@ import (
 var (
 	remainingAmountPerHour = int64(1_000_000_000) // total trading volume has to be $1,000,000,000 every hour.
 	sendAmount             = int64(694_444)       // uses every frequency (694444 x 4 x 360 = 999999360 which is close to 1000000000)
-	frequency              = 360
+	frequency              = 2
 )
 
 func main() {
@@ -93,7 +93,7 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 	}
 
 	for i := 0; i < frequency; i++ {
-		log.Printf("🔥 Trading Volume Bot🔥 %d minute(s) out of %d", i+1, frequency)
+		log.Printf("🔥 Trading Volume Bot🔥 %d out of %d frequency", i+1, frequency)
 
 		var txBytes [][]byte
 
