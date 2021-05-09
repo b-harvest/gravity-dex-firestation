@@ -71,14 +71,17 @@ func (c *Client) GetPoolReserves(ctx context.Context, reservePoolDenoms []string
 		return sdk.ZeroDec(), sdk.ZeroDec(), fmt.Errorf("failed to get reserve account balances: %s", err)
 	}
 
-	// TODO: reservePoolDenoms validatation
-	var amountX, amountY sdk.Int
-	for _, b := range balances {
-		if b.GetDenom() == reservePoolDenoms[0] {
-			amountX = b.Amount
-		}
-		if b.GetDenom() == reservePoolDenoms[1] {
-			amountY = b.Amount
+	amountX := sdk.ZeroInt()
+	amountY := sdk.ZeroInt()
+
+	if balances.IsValid() {
+		for _, b := range balances {
+			if b.GetDenom() == reservePoolDenoms[0] {
+				amountX = b.Amount
+			}
+			if b.GetDenom() == reservePoolDenoms[1] {
+				amountY = b.Amount
+			}
 		}
 	}
 
