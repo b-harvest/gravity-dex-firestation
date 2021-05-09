@@ -22,7 +22,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestParsePrices(t *testing.T) {
+func TestParseGlobalPrices(t *testing.T) {
 	resp, err := c.R().Get("prices")
 	require.NoError(t, err)
 

@@ -20,13 +20,13 @@ var (
 	remainingAmountPerHour = int64(1_000_000_000)
 
 	// sending amount of dollars worth of coins to send for each buy and sell tx
-	sendAmount = int64(694_444)
+	sendAmount = int64(138888)
 
-	// sleep 10 seconds for each frequency
-	frequency = 360
+	// sleep 5 seconds for each frequency
+	frequency = 1800
 
-	// a number of hours
-	duration = 23
+	// number of hours
+	duration = 22
 )
 
 func main() {
@@ -104,7 +104,7 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 	}
 
 	// request global prices only once to prevent from overuse
-	globalPrices, err := client.Market.GetMarketPrices(ctx, targetDenoms)
+	globalPrices, err := client.Market.GetGlobalPrices(ctx, targetDenoms)
 	if err != nil {
 		return fmt.Errorf("failed to get pool prices: %s", err)
 	}
@@ -127,6 +127,8 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 			}
 
 			reservePoolPrice := reserveAmtX.Quo(reserveAmtY)
+			globalPrice := globalPriceY.Quo(globalPriceX)
+			priceDiff := globalPrice.Quo(reservePoolPrice).Sub(sdk.NewDec(1))
 
 			log.Println("----------------------------------------------------------------")
 			log.Printf("| denomX: %s globalPriceX: %s\n", denomX, globalPriceX.String())
@@ -188,6 +190,8 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 			log.Printf("| swapTypeId: %d\n", swapTypeId)
 			log.Printf("| swapFeeRate: %s\n", swapFeeRate.String())
 			log.Printf("| ✨ reservePoolPrice: %s\n", reservePoolPrice.String())
+			log.Printf("| ✨ globalPrice: %s\n", globalPrice.String())
+			log.Printf("| ✨ priceDiff : %s\n", priceDiff.String())
 			log.Printf("| ✨ remainingAmountPerHour: %d\n", remainingAmountPerHour)
 			log.Println("----------------------------------------------------------------[Swap Msg]")
 			log.Printf("| ✅ globalPriceX: %s\n", globalPriceX.String())
@@ -203,21 +207,21 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 			log.Printf("| ✅ orderPriceY: %s\n", orderPriceY)
 		}
 
-		// for k, txByte := range txBytes {
-		// 	resp, err := transaction.BroadcastTx(ctx, txByte)
-		// 	if err != nil {
-		// 		return fmt.Errorf("failed to broadcast transaction: %s", err)
-		// 	}
-		// 	log.Println("----------------------------------------------------------------[Sending Tx] [", k+1, " out of 4 pools]")
-		// 	log.Printf("| TxHash: %s\n", resp.GetTxResponse().TxHash)
-		// 	log.Printf("| Height: %d\n", resp.GetTxResponse().Height)
-		// }
+		for k, txByte := range txBytes {
+			resp, err := transaction.BroadcastTx(ctx, txByte)
+			if err != nil {
+				return fmt.Errorf("failed to broadcast transaction: %s", err)
+			}
+			log.Println("----------------------------------------------------------------[Sending Tx] [", k+1, " out of 4 pools]")
+			log.Printf("| TxHash: %s\n", resp.GetTxResponse().TxHash)
+			log.Printf("| Height: %d\n", resp.GetTxResponse().Height)
+		}
 
 		log.Println("----------------------------------------------------------------")
 		fmt.Println("")
 		fmt.Println("")
 
-		time.Sleep(10 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 
 	return nil

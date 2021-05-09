@@ -33,69 +33,10 @@ func TestPoolReserves(t *testing.T) {
 		name            string
 		reserCoinDenoms []string
 	}{
+
 		{
-			"ATOM/BTSG",
-			[]string{"uatom", "uluna"},
-		},
-		{
-			"ATOM/DVPN",
-			[]string{"uatom", "udvpn"},
-		},
-		{
-			"ATOM/XPRT",
-			[]string{"uatom", "uxprt"},
-		},
-		{
-			"AKT/ATOM",
-			[]string{"uakt", "uatom"},
-		},
-		{
-			"ATOM/LUNA",
-			[]string{"uatom", "uluna"},
-		},
-		{
-			"ATOM/NGM",
-			[]string{"uatom", "ungm"},
-		},
-		{
-			"ATOM/IRIS",
-			[]string{"uatom", "uiris"},
-		},
-		{
-			"BTSG/DVPN",
-			[]string{"ubtsg", "udvpn"},
-		},
-		{
-			"BTSG/XPRT",
-			[]string{"uatom", "uxprt"},
-		},
-		{
-			"AKT/BTSG",
-			[]string{"uakt", "ubtsg"},
-		},
-		{
-			"BTSG/LUNA",
-			[]string{"ubtsg", "uluna"},
-		},
-		{
-			"BTSG/NGM",
-			[]string{"ubtsg", "ungm"},
-		},
-		{
-			"BTSG/IRIS",
-			[]string{"ubtsg", "uiris"},
-		},
-		{
-			"BTSG/XRUN",
-			[]string{"ubtsg", "xrun"},
-		},
-		{
-			"DVPN/XPRT",
-			[]string{"udvpn", "uxprt"},
-		},
-		{
-			"AKT/DVPN",
-			[]string{"uakt", "udvpn"},
+			"",
+			[]string{"udvpn", "ungm"},
 		},
 	}
 

@@ -3,7 +3,6 @@ package market
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +17,7 @@ import (
 const (
 	backendBaseAPIURL = "https://competition.bharvest.io:8081/"
 
+	// [Deprecated]
 	cmcAPIBaseURL       = "https://pro-api.coinmarketcap.com/"
 	cmcAPIKeyHeaderName = "X-CMC_PRO_API_KEY"
 	currency            = "USD"
@@ -37,6 +37,43 @@ func NewClient(cfg config.CoinMarketCapConfig) *Client {
 	}
 }
 
+func (c *Client) GetGlobalPrices(ctx context.Context, targetDenoms []string) ([]sdk.Dec, error) {
+	client := resty.New().SetHostURL(backendBaseAPIURL).SetTimeout(time.Duration(5 * time.Second))
+
+	resp, err := client.R().Get("prices")
+	if err != nil {
+		return []sdk.Dec{}, err
+	}
+
+	if resp.IsError() {
+		return []sdk.Dec{}, err
+	}
+
+	type PricesData struct {
+		BlockHeight int64              `json:"blockHeight"`
+		Prices      map[string]float64 `json:"prices"`
+		UpdatedAt   time.Time          `json:"updatedAt"`
+	}
+
+	var data PricesData
+	err = json.Unmarshal(resp.Body(), &data)
+	if err != nil {
+		return []sdk.Dec{}, err
+	}
+
+	var result []sdk.Dec
+
+	for _, d := range targetDenoms {
+		denom := data.Prices[d[1:]]
+		result = append(result, sdk.MustNewDecFromStr(strconv.FormatFloat(denom, 'f', 6, 64)))
+	}
+
+	return result, nil
+}
+
+////////////////////////////////////////////////////////////////
+// CoinMarketCap API
+
 type CoinMarketCapResponse struct {
 	Status struct {
 		Timestamp    time.Time `json:"timestamp"`
@@ -48,6 +85,7 @@ type CoinMarketCapResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
+// [Deprecated]
 func (c *Client) request(ctx context.Context, params string, ids []string) (CoinMarketCapResponse, error) {
 	resp, err := c.client.R().
 		SetQueryParams(map[string]string{
@@ -72,47 +110,4 @@ func (c *Client) request(ctx context.Context, params string, ids []string) (Coin
 	}
 
 	return r, nil
-}
-
-func (c *Client) GetMarketPrices(ctx context.Context, targetDenoms []string) ([]sdk.Dec, error) {
-	prices, err := c.GetBackendPrices()
-	if err != nil {
-		return []sdk.Dec{}, fmt.Errorf("failed to get pool prices: %s", err)
-	}
-
-	var result []sdk.Dec
-
-	for _, d := range targetDenoms {
-		denom := prices[d[1:]]
-		result = append(result, sdk.MustNewDecFromStr(strconv.FormatFloat(denom, 'f', 6, 64)))
-	}
-
-	return result, nil
-}
-
-type PricesData struct {
-	BlockHeight int64              `json:"blockHeight"`
-	Prices      map[string]float64 `json:"prices"`
-	UpdatedAt   time.Time          `json:"updatedAt"`
-}
-
-func (c *Client) GetBackendPrices() (map[string]float64, error) {
-	client := resty.New().SetHostURL(backendBaseAPIURL).SetTimeout(time.Duration(5 * time.Second))
-
-	resp, err := client.R().Get("prices")
-	if err != nil {
-		return map[string]float64{}, err
-	}
-
-	if resp.IsError() {
-		return map[string]float64{}, err
-	}
-
-	var data PricesData
-	err = json.Unmarshal(resp.Body(), &data)
-	if err != nil {
-		return map[string]float64{}, err
-	}
-
-	return data.Prices, nil
 }
