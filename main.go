@@ -9,7 +9,6 @@ import (
 	"github.com/b-harvest/gravity-dex-firestation/client"
 	"github.com/b-harvest/gravity-dex-firestation/config"
 	"github.com/b-harvest/gravity-dex-firestation/tx"
-	"github.com/b-harvest/gravity-dex-firestation/types"
 	"github.com/b-harvest/gravity-dex-firestation/util"
 	"github.com/b-harvest/gravity-dex-firestation/wallet"
 
@@ -19,7 +18,7 @@ import (
 var (
 	remainingAmountPerHour = int64(1_000_000_000) // total trading volume has to be $100,000,000 every hour.
 	sendAmount             = int64(694_444)       // uses every frequency (694444 x 4 x 360 = 999999360 which is close to 1000000000)
-	frequency              = 1
+	frequency              = 360
 	duration               = 24
 )
 
@@ -74,7 +73,7 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 	log.Printf("| ✅ Fees: %s\n", fees.String())
 
 	pools, _ := client.GRPC.GetAllPools(context.Background())
-	pools = util.Shuffle(pools)   // shuffle the exisiting pools and remove the ones that are not listed in CoinMarketCap
+	// pools = util.Shuffle(pools)   // shuffle the exisiting pools and remove the ones that are not listed in CoinMarketCap
 	pools = util.Random(pools, 4) // randomly pick 4 pools out of the existing pools
 
 	log.Println("----------------------------------------------------------------[Random Pools]")
@@ -88,21 +87,57 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 	log.Printf("| pool 4 ReserveCoinDenoms: %s\n", pools[3].ReserveCoinDenoms)
 	log.Println("----------------------------------------------------------------")
 
-	ids := []string{
-		types.CoinMarketCapMetadata[pools[0].ReserveCoinDenoms[0]],
-		types.CoinMarketCapMetadata[pools[0].ReserveCoinDenoms[1]],
-		types.CoinMarketCapMetadata[pools[1].ReserveCoinDenoms[0]],
-		types.CoinMarketCapMetadata[pools[1].ReserveCoinDenoms[1]],
-		types.CoinMarketCapMetadata[pools[2].ReserveCoinDenoms[0]],
-		types.CoinMarketCapMetadata[pools[2].ReserveCoinDenoms[1]],
-		types.CoinMarketCapMetadata[pools[3].ReserveCoinDenoms[0]],
-		types.CoinMarketCapMetadata[pools[3].ReserveCoinDenoms[1]],
-	}
+	// ids := []string{
+	// 	types.CoinMarketCapMetadata[pools[0].ReserveCoinDenoms[0]],
+	// 	types.CoinMarketCapMetadata[pools[0].ReserveCoinDenoms[1]],
+	// 	types.CoinMarketCapMetadata[pools[1].ReserveCoinDenoms[0]],
+	// 	types.CoinMarketCapMetadata[pools[1].ReserveCoinDenoms[1]],
+	// 	types.CoinMarketCapMetadata[pools[2].ReserveCoinDenoms[0]],
+	// 	types.CoinMarketCapMetadata[pools[2].ReserveCoinDenoms[1]],
+	// 	types.CoinMarketCapMetadata[pools[3].ReserveCoinDenoms[0]],
+	// 	types.CoinMarketCapMetadata[pools[3].ReserveCoinDenoms[1]],
+	// }
+
+	// // request global prices only once to prevent from overuse
+	// market, err := client.Market.GetMarketPrices(ctx, ids)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to get pool prices: %s", err)
+	// }
+
+	// ATOM := "27.89704229868265"
+	// DVPN := ".02402116596556"
+	// BTSG := "0.18456558759045"
+	// XPRT := "9.30043142819725"
+	// AKT := "5.17110114006091"
 
 	// request global prices only once to prevent from overuse
-	market, err := client.Market.GetMarketPrices(ctx, ids)
-	if err != nil {
-		return fmt.Errorf("failed to get pool prices: %s", err)
+	//globalPrices, err := client.Market.GetMarketPrices(ctx, ids)
+	//if err != nil {
+	//	return fmt.Errorf("failed to get pool prices: %s", err)
+	//}
+
+	// Localnet
+	// 2021/05/10 01:56:57 | pool 1 ReserveCoinDenoms: [uatom ubtsg]
+	// 2021/05/10 01:56:57 | pool 2 ReserveCoinDenoms: [uatom udvpn]
+	// 2021/05/10 01:56:57 | pool 3 ReserveCoinDenoms: [uatom uxprt]
+	// 2021/05/10 01:56:57 | pool 4 ReserveCoinDenoms: [uakt uatom]
+	// globalPrices := []sdk.Dec{
+	// 	sdk.MustNewDecFromStr("27.80916444485003"), sdk.MustNewDecFromStr("0.18455737143922"),
+	// 	sdk.MustNewDecFromStr("27.80916444485003"), sdk.MustNewDecFromStr("0.02401638525683"),
+	// 	sdk.MustNewDecFromStr("27.80916444485003"), sdk.MustNewDecFromStr("9.29970983876029"),
+	// 	sdk.MustNewDecFromStr("5.18077974928129"), sdk.MustNewDecFromStr("27.80916444485003"),
+	// }
+
+	// Testnet
+	// 2021/05/10 02:22:05 | pool 1 ReserveCoinDenoms: [uakt uatom]
+	// 2021/05/10 02:22:05 | pool 2 ReserveCoinDenoms: [uatom uluna]
+	// 2021/05/10 02:22:05 | pool 3 ReserveCoinDenoms: [uatom udvpn]
+	// 2021/05/10 02:22:05 | pool 4 ReserveCoinDenoms: [uatom ubtsg]
+	globalPrices := []sdk.Dec{
+		sdk.MustNewDecFromStr("5.17940872752986"), sdk.MustNewDecFromStr("27.80916444485003"),
+		sdk.MustNewDecFromStr("27.80916444485003"), sdk.MustNewDecFromStr("17.06741204554162"),
+		sdk.MustNewDecFromStr("27.80916444485003"), sdk.MustNewDecFromStr("0.02422801943997"),
+		sdk.MustNewDecFromStr("27.80916444485003"), sdk.MustNewDecFromStr("0.18818201792559"),
 	}
 
 	for i := 0; i < frequency; i++ {
@@ -110,22 +145,12 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 
 		var txBytes [][]byte
 
-		for i, p := range pools {
-			ids := []string{
-				types.CoinMarketCapMetadata[p.ReserveCoinDenoms[0]],
-				types.CoinMarketCapMetadata[p.ReserveCoinDenoms[1]],
-			}
-
-			marketResponses, err := client.Market.GetMarketPrices(ctx, ids)
-			if err != nil {
-				return fmt.Errorf("failed to get pool prices: %s", err)
-			}
-
-			globalPriceX := marketResponses[0].Price
-			globalPriceY := marketResponses[1].Price
-
+		for j, p := range pools {
 			denomX := p.ReserveCoinDenoms[0]
 			denomY := p.ReserveCoinDenoms[1]
+
+			globalPriceX := globalPrices[2*j]
+			globalPriceY := globalPrices[2*j+1]
 
 			reserveAmtX, reserveAmtY, err := client.GRPC.GetPoolReserves(ctx, []string{denomX, denomY})
 			if err != nil {
@@ -145,15 +170,15 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 
 			// swap denomY for denomX (buy)
 			orderAmountX := sdk.NewDec(sendAmount / 4).Quo(globalPriceX).Mul(sdk.NewDec(1_000_000))
-			offerCoinX := sdk.NewCoin(denomX, orderAmountX.RoundInt())        // truncated
-			demandCoinDenomX := denomY                                        // the other side of pair
-			orderPriceX := reservePoolPrice.Mul(sdk.MustNewDecFromStr("1.2")) // multiply pool price by 1.2 to buy higher price
+			offerCoinX := sdk.NewCoin(denomX, orderAmountX.RoundInt())         // truncated
+			demandCoinDenomX := denomY                                         // the other side of pair
+			orderPriceX := reservePoolPrice.Mul(sdk.MustNewDecFromStr("1.05")) // multiply pool price by 1.2 to buy higher price
 
 			// swap denomX for denomY (sell)
 			orderAmountY := sdk.NewDec(sendAmount / 4).Quo(globalPriceY).Mul(sdk.NewDec(1_000_000))
-			offerCoinY := sdk.NewCoin(denomY, orderAmountY.RoundInt())        // truncated
-			demandCoinDenomY := denomX                                        // the other side of pair
-			orderPriceY := reservePoolPrice.Mul(sdk.MustNewDecFromStr("0.8")) // multiply pool price by 0.8 to sell cheaper price
+			offerCoinY := sdk.NewCoin(denomY, orderAmountY.RoundInt())         // truncated
+			demandCoinDenomY := denomX                                         // the other side of pair
+			orderPriceY := reservePoolPrice.Mul(sdk.MustNewDecFromStr("0.95")) // multiply pool price by 0.8 to sell cheaper price
 
 			buyMsg, err := tx.MsgSwap(poolCreator, poolId, swapTypeId, offerCoinX, demandCoinDenomX, orderPriceX, swapFeeRate)
 			if err != nil {
@@ -188,7 +213,7 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 
 			txBytes = append(txBytes, txByte)
 
-			log.Println("----------------------------------------------------------------[Common] [", i+1, " out of 4 pools]")
+			log.Println("----------------------------------------------------------------[Common] [", j+1, " out of 4 pools]")
 			log.Printf("| poolCreator: %s\n", poolCreator)
 			log.Printf("| poolId: %d\n", poolId)
 			log.Printf("| swapTypeId: %d\n", swapTypeId)
@@ -209,12 +234,12 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 			log.Printf("| ✅ orderPriceY: %s\n", orderPriceY)
 		}
 
-		for i, txByte := range txBytes {
+		for k, txByte := range txBytes {
 			resp, err := transaction.BroadcastTx(ctx, txByte)
 			if err != nil {
 				return fmt.Errorf("failed to broadcast transaction: %s", err)
 			}
-			log.Println("----------------------------------------------------------------[Sending Tx] [", i+1, " out of 4 pools]")
+			log.Println("----------------------------------------------------------------[Sending Tx] [", k+1, " out of 4 pools]")
 			log.Printf("| TxHash: %s\n", resp.GetTxResponse().TxHash)
 			log.Printf("| Height: %d\n", resp.GetTxResponse().Height)
 		}
