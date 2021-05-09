@@ -9,9 +9,16 @@ import (
 	"github.com/b-harvest/gravity-dex-firestation/client"
 	"github.com/b-harvest/gravity-dex-firestation/config"
 	"github.com/b-harvest/gravity-dex-firestation/tx"
+	"github.com/b-harvest/gravity-dex-firestation/util"
 	"github.com/b-harvest/gravity-dex-firestation/wallet"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+)
+
+var (
+	remainingAmountPerHour = int64(1_000_000_000) // total trading volume has to be $1,000,000,000 every hour.
+	sendAmountPerMinute    = int64(690_000)       // $400,000 worth of transaction generation every frequency
+	frequency              = 360
 )
 
 func main() {
@@ -25,18 +32,10 @@ func main() {
 		log.Fatalf("failed to create new config: %s", err)
 	}
 
-	for {
-		stablizePoolPrice(cfg, client)
-
-		time.Sleep(15 * time.Minute)
-	}
+	impactTradingVolume(cfg, client)
 }
 
-// stablizePoolPrice stablizes pool price of ATOM/LUNA pool.
-// This provides users arbitrage opportunity for overpriced luna by managing the pool price.
-func stablizePoolPrice(cfg config.Config, client *client.Client) error {
-	log.Println("🔥 stablizing pool price...")
-
+func impactTradingVolume(cfg config.Config, client *client.Client) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -50,192 +49,158 @@ func stablizePoolPrice(cfg config.Config, client *client.Client) error {
 		return fmt.Errorf("failed to retrieve account and private key from mnemonic: %s", err)
 	}
 
-	fees := sdk.NewCoins(sdk.NewCoin(cfg.FireStation.FeeDenom, sdk.NewInt(cfg.FireStation.FeeAmount)))
-	reservePoolDenoms := []string{cfg.FireStation.DenomA, cfg.FireStation.DenomB}
-	cmcIds := []string{cfg.FireStation.CmcIdA, cfg.FireStation.CmcIdB}
-
-	reserveAmtX, reserveAmtY, err := client.GRPC.GetPoolReserves(ctx, reservePoolDenoms)
+	account, err := client.GRPC.GetBaseAccountInfo(ctx, accAddr)
 	if err != nil {
-		return fmt.Errorf("failed to get pool price: %s", err)
+		return fmt.Errorf("failed to get account information: %s", err)
 	}
 
-	globalPriceX, globalPriceY, err := client.Market.GetMarketPrices(ctx, cmcIds)
+	accSeq := account.GetSequence()
+	accNum := account.GetAccountNumber()
+
+	fees := sdk.NewCoins(sdk.NewCoin(cfg.FireStation.FeeDenom, sdk.NewInt(cfg.FireStation.FeeAmount)))
+	transaction := tx.NewTransaction(client, chainID, fees)
+
+	log.Printf("| ✅ ChainID: %s\n", chainID)
+	log.Printf("| ✅ Sender: %s\n", accAddr)
+	log.Printf("| ✅ Fees: %s\n", fees.String())
+	log.Println("----------------------------------------------------------------")
+
+	pools, _ := client.GRPC.GetAllPools(context.Background())
+	pools = util.Shuffle(pools)   // shuffle the exisiting pools and remove the ones that are not listed in CoinMarketCap
+	pools = util.Random(pools, 4) // randomly pick 4 pools out of the existing pools
+
+	log.Println("----------------------------------------------------------------[Random Pools]")
+	log.Printf("| pool 1: %s\n", pools[0].String())
+	log.Printf("| pool 2: %s\n", pools[1].String())
+	log.Printf("| pool 3: %s\n", pools[2].String())
+	log.Printf("| pool 4: %s\n", pools[3].String())
+	log.Println("----------------------------------------------------------------")
+
+	ids := []string{
+		config.CoinMarketCapMetadata[pools[0].ReserveCoinDenoms[0]],
+		config.CoinMarketCapMetadata[pools[0].ReserveCoinDenoms[1]],
+		config.CoinMarketCapMetadata[pools[1].ReserveCoinDenoms[0]],
+		config.CoinMarketCapMetadata[pools[1].ReserveCoinDenoms[1]],
+		config.CoinMarketCapMetadata[pools[2].ReserveCoinDenoms[0]],
+		config.CoinMarketCapMetadata[pools[2].ReserveCoinDenoms[1]],
+		config.CoinMarketCapMetadata[pools[3].ReserveCoinDenoms[0]],
+		config.CoinMarketCapMetadata[pools[3].ReserveCoinDenoms[1]],
+	}
+
+	// request global prices only once to prevent from overuse
+	globalPrices, err := client.Market.GetMarketPrices(ctx, ids)
 	if err != nil {
 		return fmt.Errorf("failed to get pool prices: %s", err)
 	}
 
-	poolPrice := reserveAmtX.Quo(reserveAmtY)                  // POOLPRICE   = ATOMRESERVE/LUNARESERVE
-	globalPrice := globalPriceY.Quo(globalPriceX)              // GLOBALPRICE = LUNAUSD/ATOMUSD
-	priceDiff := globalPrice.Quo(poolPrice).Sub(sdk.NewDec(1)) // PRICEDIFF   = GLOBALPRICE/POOLPRICE - 1
+	for i := 0; i < frequency; i++ {
+		log.Printf("🔥 Trading Volume Bot🔥 %d minute(s) out of %d", i+1, frequency)
 
-	log.Println("-----------------------------------------------------------------")
-	log.Printf("| chainID: %s\n", chainID)
-	log.Printf("| sender: %s\n", accAddr)
-	log.Printf("| fees: %s\n", fees.String())
-	log.Println("-----------------------------------------------------------------")
-	log.Printf("| reserveAmtX: %s\n", reserveAmtX.String())
-	log.Printf("| reserveAmtY: %s\n", reserveAmtY.String())
-	log.Printf("| globalPriceX: %s\n", globalPriceX.String())
-	log.Printf("| globalPriceY: %s\n", globalPriceY.String())
-	log.Printf("| ✨ reservePoolPrice: %s\n", poolPrice.String())
-	log.Printf("| ✨ globalPrice: %s\n", globalPrice.String())
-	log.Printf("| ✨ priceDiff : %s\n", priceDiff.String())
-	log.Printf("| ✨ priceDiff.Abs(): %s\n", priceDiff.Abs().String())
-	log.Println("-----------------------------------------------------------------")
+		var txBytes [][]byte
 
-	transaction := tx.NewTransaction(client, chainID, fees)
+		for i, p := range pools {
+			globalPriceX := globalPrices[i]
+			globalPriceY := globalPrices[i+1]
+			denomX := p.ReserveCoinDenoms[0]
+			denomY := p.ReserveCoinDenoms[1]
 
-	switch {
-	case priceDiff.GTE(sdk.NewDecWithPrec(2, 1)):
-		log.Printf("🔥 priceDiff is greater than equal to %s; selling '%s' buying '%s'\n", sdk.NewDecWithPrec(2, 1).String(), reservePoolDenoms[0], reservePoolDenoms[1])
-
-		orderAmount := reserveAmtX.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2))) // ATOM = ATOMRESERVE * MIN(abs(PRICEDIFF/2),0.01)
-		offerCoin := sdk.NewCoin(cfg.FireStation.DenomA, orderAmount.RoundInt())                                 // truncated
-		poolCreator := accAddr
-		poolId := cfg.FireStation.PoolId
-		swapTypeId := uint32(1)
-		demandCoinDenom := cfg.FireStation.DenomB
-		orderPrice := globalPrice
-		swapFeeRate := sdk.NewDecWithPrec(3, 3)
-
-		msg, err := tx.MsgSwap(poolCreator, poolId, swapTypeId, offerCoin, demandCoinDenom, orderPrice, swapFeeRate)
-		if err != nil {
-			return fmt.Errorf("failed to create swap message: %s", err)
-		}
-
-		for i := 1; i < 100000; i++ {
-			account, err := client.GRPC.GetBaseAccountInfo(ctx, accAddr)
-			if err != nil {
-				return fmt.Errorf("failed to get account information: %s", err)
-			}
-
-			accSeq := account.GetSequence()
-			accNum := account.GetAccountNumber()
-
-			reserveAmtX, reserveAmtY, err := client.GRPC.GetPoolReserves(ctx, reservePoolDenoms)
+			reserveAmtX, reserveAmtY, err := client.GRPC.GetPoolReserves(ctx, []string{denomX, denomY})
 			if err != nil {
 				return fmt.Errorf("failed to get pool price: %s", err)
 			}
 
-			poolPrice := reserveAmtX.Quo(reserveAmtY)                  // POOLPRICE   = ATOMRESERVE/LUNARESERVE
-			priceDiff := globalPrice.Quo(poolPrice).Sub(sdk.NewDec(1)) // PRICEDIFF   = GLOBALPRICE/POOLPRICE - 1
+			reservePoolPrice := reserveAmtX.Quo(reserveAmtY)
 
-			log.Println("-------------------------------------------------------------send tx for [", i, "] times")
-			log.Printf("| poolCreator: %s\n", poolCreator)
-			log.Printf("| poolId: %d\n", poolId)
-			log.Printf("| swapTypeId: %d\n", swapTypeId)
-			log.Printf("| offerCoin: %s\n", offerCoin.String())
-			log.Printf("| demandCoinDenom: %s\n", demandCoinDenom)
-			log.Printf("| orderPrice: %s\n", orderPrice.String())
-			log.Printf("| swapFeeRate: %s\n", swapFeeRate.String())
-			log.Println("-------------------------------------------------------------")
-			log.Printf("| reserveAmtX: %s\n", reserveAmtX.String())
-			log.Printf("| reserveAmtY: %s\n", reserveAmtY.String())
-			log.Printf("| globalPriceX: %s\n", globalPriceX.String())
-			log.Printf("| globalPriceY: %s\n", globalPriceY.String())
-			log.Printf("| ✨ reservePoolPrice: %s\n", poolPrice.String())
-			log.Printf("| ✨ globalPrice: %s\n", globalPrice.String())
-			log.Printf("| ✨ priceDiff: %s\n", priceDiff.String())
-			log.Println("-------------------------------------------------------------")
+			log.Println("----------------------------------------------------------------")
+			log.Printf("| denomX: %s globalPriceX: %s\n", denomX, globalPriceX.String())
+			log.Printf("| denomY: %s globalPriceY: %s\n", denomY, globalPriceY.String())
 
-			// exit when price diff is satified with the condition
-			if priceDiff.Abs().LTE(sdk.NewDecWithPrec(1, 2)) {
-				log.Println("❗ gap between pool and global prices is 0.01 percent now ❗")
-				return nil
+			poolCreator := accAddr
+			poolId := p.GetPoolId()
+			swapTypeId := uint32(1)
+			swapFeeRate := sdk.NewDecWithPrec(3, 3)
+
+			// swap denomY for denomX (buy)
+			orderAmountX := sdk.NewDec(sendAmountPerMinute).Quo(globalPriceX).Quo(sdk.NewDec(2))
+			offerCoinX := sdk.NewCoin(denomX, orderAmountX.RoundInt())        // truncated
+			demandCoinDenomX := denomY                                        // the other side of pair
+			orderPriceX := reservePoolPrice.Mul(sdk.MustNewDecFromStr("1.2")) // multiply pool price by 1.2 to buy higher price
+
+			// swap denomX for denomY (sell)
+			orderAmountY := sdk.NewDec(sendAmountPerMinute).Quo(globalPriceY).Quo(sdk.NewDec(2))
+			offerCoinY := sdk.NewCoin(denomY, orderAmountY.RoundInt())        // truncated
+			demandCoinDenomY := denomX                                        // the other side of pair
+			orderPriceY := reservePoolPrice.Mul(sdk.MustNewDecFromStr("0.8")) // multiply pool price by 0.8 to sell cheaper price
+
+			buyMsg, err := tx.MsgSwap(poolCreator, poolId, swapTypeId, offerCoinX, demandCoinDenomX, orderPriceX, swapFeeRate)
+			if err != nil {
+				return fmt.Errorf("failed to create swap message: %s", err)
 			}
 
-			txBytes, err := transaction.Sign(ctx, accSeq, accNum, privKey, msg)
+			buyMsg2, err := tx.MsgSwap(poolCreator, poolId, swapTypeId, offerCoinX, demandCoinDenomX, orderPriceX, swapFeeRate)
+			if err != nil {
+				return fmt.Errorf("failed to create swap message: %s", err)
+			}
+
+			sellMsg, err := tx.MsgSwap(poolCreator, poolId, swapTypeId, offerCoinY, demandCoinDenomY, orderPriceY, swapFeeRate)
+			if err != nil {
+				return fmt.Errorf("failed to create swap message: %s", err)
+			}
+
+			sellMsg2, err := tx.MsgSwap(poolCreator, poolId, swapTypeId, offerCoinY, demandCoinDenomY, orderPriceY, swapFeeRate)
+			if err != nil {
+				return fmt.Errorf("failed to create swap message: %s", err)
+			}
+
+			txByte, err := transaction.Sign(ctx, accSeq, accNum, privKey, buyMsg, buyMsg2, sellMsg, sellMsg2)
 			if err != nil {
 				return fmt.Errorf("failed to sign swap message: %s", err)
 			}
 
-			resp, err := transaction.BroadcastTx(ctx, txBytes)
-			if err != nil {
-				return fmt.Errorf("failed to broadcast transaction: %s", err)
-			}
+			// increase sequence
+			accSeq = accSeq + 1
 
-			log.Printf("TxHash: %s\n", resp.GetTxResponse().TxHash)
-			log.Printf("Height: %d\n\n", resp.GetTxResponse().Height)
+			// decrease the remaining target amount of trading volume
+			remainingAmountPerHour = sendAmountPerMinute * 2
 
-			time.Sleep(3 * time.Second)
-		}
+			txBytes = append(txBytes, txByte)
 
-	case priceDiff.LTE(sdk.NewDecWithPrec(-2, 1)):
-		log.Printf("🔥 priceDiff is less than %s; selling '%s' and buying '%s'\n", sdk.NewDecWithPrec(-1, 1).String(), reservePoolDenoms[1], reservePoolDenoms[0])
-
-		orderAmount := reserveAmtY.Mul(sdk.MinDec(priceDiff.Quo(sdk.NewDec(2)).Abs(), sdk.NewDecWithPrec(1, 2))) // LUNA = LUNARESERVE * MIN(abs(PRICEDIFF/2),0.01)
-		offerCoin := sdk.NewCoin(cfg.FireStation.DenomB, orderAmount.RoundInt())                                 // truncated
-		poolCreator := accAddr
-		poolId := cfg.FireStation.PoolId
-		swapTypeId := uint32(1)
-		demandCoinDenom := cfg.FireStation.DenomA
-		orderPrice := globalPrice
-		swapFeeRate := sdk.NewDecWithPrec(3, 3)
-
-		msg, err := tx.MsgSwap(poolCreator, poolId, swapTypeId, offerCoin, demandCoinDenom, orderPrice, swapFeeRate)
-		if err != nil {
-			return fmt.Errorf("failed to create swap message: %s", err)
-		}
-
-		for i := 1; i < 100000; i++ {
-			account, err := client.GRPC.GetBaseAccountInfo(ctx, accAddr)
-			if err != nil {
-				return fmt.Errorf("failed to get account information: %s", err)
-			}
-
-			accSeq := account.GetSequence()
-			accNum := account.GetAccountNumber()
-
-			reserveAmtX, reserveAmtY, err := client.GRPC.GetPoolReserves(ctx, reservePoolDenoms)
-			if err != nil {
-				return fmt.Errorf("failed to get pool price: %s", err)
-			}
-
-			poolPrice := reserveAmtX.Quo(reserveAmtY)                  // POOLPRICE   = ATOMRESERVE/LUNARESERVE
-			priceDiff := globalPrice.Quo(poolPrice).Sub(sdk.NewDec(1)) // PRICEDIFF   = GLOBALPRICE/POOLPRICE - 1
-
-			log.Println("-------------------------------------------------------------send tx for [", i, "] times")
+			log.Println("----------------------------------------------------------------[Common] [", i+1, " out of 4 pools]")
 			log.Printf("| poolCreator: %s\n", poolCreator)
 			log.Printf("| poolId: %d\n", poolId)
 			log.Printf("| swapTypeId: %d\n", swapTypeId)
-			log.Printf("| offerCoin: %s\n", offerCoin.String())
-			log.Printf("| demandCoinDenom: %s\n", demandCoinDenom)
-			log.Printf("| orderPrice: %s\n", orderPrice.String())
 			log.Printf("| swapFeeRate: %s\n", swapFeeRate.String())
-			log.Println("-------------------------------------------------------------")
-			log.Printf("| reserveAmtX: %s\n", reserveAmtX.String())
-			log.Printf("| reserveAmtY: %s\n", reserveAmtY.String())
-			log.Printf("| globalPriceX: %s\n", globalPriceX.String())
-			log.Printf("| globalPriceY: %s\n", globalPriceY.String())
-			log.Printf("| ✨ reservePoolPrice: %s\n", poolPrice.String())
-			log.Printf("| ✨ globalPrice: %s\n", globalPrice.String())
-			log.Printf("| ✨ priceDiff: %s\n", priceDiff.String())
-			log.Println("-------------------------------------------------------------")
+			log.Printf("| ✨ reservePoolPrice: %s\n", reservePoolPrice.String())
+			log.Printf("| ✨ remainingAmountPerHour: %d\n", remainingAmountPerHour)
+			log.Println("----------------------------------------------------------------[Swap Msg]")
+			log.Printf("| ✅ globalPriceX: %s\n", globalPriceX.String())
+			log.Printf("| ✅ orderAmountX: %s\n", orderAmountX.String())
+			log.Printf("| ✅ offerCoinX: %s\n", offerCoinX.String())
+			log.Printf("| ✅ demandCoinDenomX: %s\n", demandCoinDenomX)
+			log.Printf("| ✅ orderPriceX: %s\n", orderPriceX)
+			log.Println("----------------------------------------------------------------[Swap Msg]")
+			log.Printf("| ✅ globalPriceY: %s\n", globalPriceY.String())
+			log.Printf("| ✅ orderAmountY: %s\n", orderAmountY.String())
+			log.Printf("| ✅ offerCoinY: %s\n", offerCoinY.String())
+			log.Printf("| ✅ demandCoinDenomY: %s\n", demandCoinDenomY)
+			log.Printf("| ✅ orderPriceY: %s\n", orderPriceY)
+		}
 
-			// exit when price diff is satified with the condition
-			if priceDiff.Abs().LTE(sdk.NewDecWithPrec(1, 2)) {
-				log.Println("❗ gap between pool and global prices is 0.01 percent now ❗")
-				return nil
-			}
-
-			txBytes, err := transaction.Sign(ctx, accSeq, accNum, privKey, msg)
-			if err != nil {
-				return fmt.Errorf("failed to sign swap message: %s", err)
-			}
-
-			resp, err := transaction.BroadcastTx(ctx, txBytes)
+		for i, txByte := range txBytes {
+			resp, err := transaction.BroadcastTx(ctx, txByte)
 			if err != nil {
 				return fmt.Errorf("failed to broadcast transaction: %s", err)
 			}
-
-			log.Printf("TxHash: %s\n", resp.GetTxResponse().TxHash)
-			log.Printf("Height: %d\n\n", resp.GetTxResponse().Height)
-
-			time.Sleep(3 * time.Second)
+			log.Println("----------------------------------------------------------------[Sending Tx] [", i+1, " out of 4 pools]")
+			log.Printf("| TxHash: %s\n", resp.GetTxResponse().TxHash)
+			log.Printf("| Height: %d\n", resp.GetTxResponse().Height)
 		}
 
-	default:
-		log.Println("pool price is already stabilized")
+		log.Println("----------------------------------------------------------------")
+		fmt.Println("")
+		fmt.Println("")
+
+		time.Sleep(10 * time.Second)
 	}
 
 	return nil

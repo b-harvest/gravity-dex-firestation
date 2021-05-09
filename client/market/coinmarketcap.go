@@ -71,10 +71,10 @@ func (c *Client) request(ctx context.Context, params string, ids []string) (Coin
 	return r, nil
 }
 
-func (c *Client) GetMarketPrices(ctx context.Context, ids []string) (sdk.Dec, sdk.Dec, error) {
+func (c *Client) GetMarketPrices(ctx context.Context, ids []string) ([]sdk.Dec, error) {
 	resp, err := c.request(ctx, "/v1/cryptocurrency/quotes/latest", ids)
 	if err != nil {
-		return sdk.ZeroDec(), sdk.ZeroDec(), fmt.Errorf("failed to get pool prices: %s", err)
+		return []sdk.Dec{}, fmt.Errorf("failed to get pool prices: %s", err)
 	}
 
 	var data map[string]struct {
@@ -87,28 +87,23 @@ func (c *Client) GetMarketPrices(ctx context.Context, ids []string) (sdk.Dec, sd
 
 	err = json.Unmarshal(resp.Data, &data)
 	if err != nil {
-		return sdk.ZeroDec(), sdk.ZeroDec(), fmt.Errorf("failed to unmarshal market data: %s", err)
+		return []sdk.Dec{}, fmt.Errorf("failed to unmarshal market data: %s", err)
 	}
 
-	var priceX, priceY sdk.Dec
-	for _, id := range ids {
+	var globalPrices []sdk.Dec
+	for i, id := range ids {
 		id = strings.ToUpper(id)
 
 		d, ok := data[id]
 		if !ok {
-			return sdk.ZeroDec(), sdk.ZeroDec(), fmt.Errorf("price for the id %s not found", id)
+			return []sdk.Dec{}, fmt.Errorf("price for the id %s not found", id)
 		}
 
-		// another way to convert float64 type to sdk.Dec
-		// sdk.NewDecWithPrec(int64(f * 1000000), 6)
-		if id == ids[0] {
-			priceX, _ = sdk.NewDecFromStr(fmt.Sprintf("%f", d.Quote.USD.Price))
-		}
-
-		if id == ids[1] {
-			priceY, _ = sdk.NewDecFromStr(fmt.Sprintf("%f", d.Quote.USD.Price))
+		if id == ids[i] {
+			price, _ := sdk.NewDecFromStr(fmt.Sprintf("%f", d.Quote.USD.Price))
+			globalPrices = append(globalPrices, price)
 		}
 	}
 
-	return priceX, priceY, nil
+	return globalPrices, nil
 }

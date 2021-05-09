@@ -28,13 +28,96 @@ func TestMain(m *testing.M) {
 }
 
 func TestPoolReserves(t *testing.T) {
-	ctx := context.Background()
+	// go clean -testcache
+	testCases := []struct {
+		name            string
+		reserCoinDenoms []string
+	}{
+		{
+			"ATOM/BTSG",
+			[]string{"uatom", "uluna"},
+		},
+		{
+			"ATOM/DVPN",
+			[]string{"uatom", "udvpn"},
+		},
+		{
+			"ATOM/XPRT",
+			[]string{"uatom", "uxprt"},
+		},
+		{
+			"AKT/ATOM",
+			[]string{"uakt", "uatom"},
+		},
+		{
+			"ATOM/LUNA",
+			[]string{"uatom", "uluna"},
+		},
+		{
+			"ATOM/NGM",
+			[]string{"uatom", "ungm"},
+		},
+		{
+			"ATOM/IRIS",
+			[]string{"uatom", "uiris"},
+		},
+		{
+			"BTSG/DVPN",
+			[]string{"ubtsg", "udvpn"},
+		},
+		{
+			"BTSG/XPRT",
+			[]string{"uatom", "uxprt"},
+		},
+		{
+			"AKT/BTSG",
+			[]string{"uakt", "ubtsg"},
+		},
+		{
+			"BTSG/LUNA",
+			[]string{"ubtsg", "uluna"},
+		},
+		{
+			"BTSG/NGM",
+			[]string{"ubtsg", "ungm"},
+		},
+		{
+			"BTSG/IRIS",
+			[]string{"ubtsg", "uiris"},
+		},
+		{
+			"BTSG/XRUN",
+			[]string{"ubtsg", "xrun"},
+		},
+		{
+			"DVPN/XPRT",
+			[]string{"udvpn", "uxprt"},
+		},
+		{
+			"AKT/DVPN",
+			[]string{"uakt", "udvpn"},
+		},
+	}
 
-	reservePoolDenoms := []string{"uatom", "uluna"}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			reserveA, reserveB, err := c.GetPoolReserves(context.Background(), tc.reserCoinDenoms)
+			require.NoError(t, err)
 
-	reserveA, reserveB, err := c.GetPoolReserves(ctx, reservePoolDenoms)
+			fmt.Printf("denomA: %s reserveA: %s \n", tc.reserCoinDenoms[0], reserveA)
+			fmt.Printf("denomB: %s reserveB: %s \n", tc.reserCoinDenoms[1], reserveB)
+			fmt.Println("")
+		})
+	}
+}
+
+func TestAllPools(t *testing.T) {
+	pools, err := c.GetAllPools(context.Background())
 	require.NoError(t, err)
 
-	fmt.Println("reserveA: ", reserveA)
-	fmt.Println("reserveB: ", reserveB)
+	for _, p := range pools {
+		fmt.Println(p)
+	}
+
+	fmt.Println(len(pools))
 }

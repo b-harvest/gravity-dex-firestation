@@ -10,8 +10,8 @@ MNEMONIC_1="guard cream sadness conduct invite crumble clock pudding hole grit l
 MNEMONIC_2="friend excite rough reopen cover wheel spoon convince island path clean monkey play snow number walnut pull lock shoot hurry dream divide concert discover"
 MNEMONIC_3="fuel obscure melt april direct second usual hair leave hobby beef bacon solid drum used law mercy worry fat super must ritual bring faculty"
 MNEMONIC_4="melody lonely cube ball ritual jump fabric pull pupil kit credit filter acid used festival salmon muscle first meat aisle bubble vote gorilla judge"
-GENESIS_COINS="5000000000000stake,5000000000000uatom,5000000000000uregen,5000000000000uxrn,5000000000000ubtsg,5000000000000udvpn,5000000000000uxprt,\
-5000000000000uakt,5000000000000uluna,5000000000000ungm,5000000000000ugcyb,5000000000000uiris,5000000000000xrun"
+GENESIS_COINS="5000000000000stake,5000000000000uatom,5000000000000ubtsg,5000000000000udvpn,5000000000000uxprt,5000000000000uakt,5000000000000uluna,5000000000000ungm,5000000000000uiris,\
+5000000000000xrun,5000000000000uregen,5000000000000udsm,5000000000000ucom,5000000000000ugcyb"
 
 # Ensure liquidityd is installed
 if ! [ -x "$(which $BINARY)" ]; then
