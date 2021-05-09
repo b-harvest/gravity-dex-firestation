@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/b-harvest/gravity-dex-firestation/client"
 	"github.com/b-harvest/gravity-dex-firestation/config"
@@ -17,7 +16,7 @@ import (
 
 var (
 	remainingAmountPerHour = int64(1_000_000_000) // total trading volume has to be $1,000,000,000 every hour.
-	sendAmountPerMinute    = int64(690_000)       // $400,000 worth of transaction generation every frequency
+	sendAmount             = int64(694_444)       // uses every frequency (694444 x 4 x 360 = 999999360 which is close to 1000000000)
 	frequency              = 360
 )
 
@@ -121,13 +120,13 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 			swapFeeRate := sdk.NewDecWithPrec(3, 3)
 
 			// swap denomY for denomX (buy)
-			orderAmountX := sdk.NewDec(sendAmountPerMinute).Quo(globalPriceX).Quo(sdk.NewDec(2))
+			orderAmountX := sdk.NewDec(sendAmount / 4).Quo(globalPriceX)
 			offerCoinX := sdk.NewCoin(denomX, orderAmountX.RoundInt())        // truncated
 			demandCoinDenomX := denomY                                        // the other side of pair
 			orderPriceX := reservePoolPrice.Mul(sdk.MustNewDecFromStr("1.2")) // multiply pool price by 1.2 to buy higher price
 
 			// swap denomX for denomY (sell)
-			orderAmountY := sdk.NewDec(sendAmountPerMinute).Quo(globalPriceY).Quo(sdk.NewDec(2))
+			orderAmountY := sdk.NewDec(sendAmount / 4).Quo(globalPriceY)
 			offerCoinY := sdk.NewCoin(denomY, orderAmountY.RoundInt())        // truncated
 			demandCoinDenomY := denomX                                        // the other side of pair
 			orderPriceY := reservePoolPrice.Mul(sdk.MustNewDecFromStr("0.8")) // multiply pool price by 0.8 to sell cheaper price
@@ -161,7 +160,7 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 			accSeq = accSeq + 1
 
 			// decrease the remaining target amount of trading volume
-			remainingAmountPerHour = sendAmountPerMinute * 2
+			remainingAmountPerHour = remainingAmountPerHour - sendAmount
 
 			txBytes = append(txBytes, txByte)
 
@@ -200,7 +199,7 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 		fmt.Println("")
 		fmt.Println("")
 
-		time.Sleep(10 * time.Second)
+		// time.Sleep(10 * time.Second)
 	}
 
 	return nil
