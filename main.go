@@ -27,7 +27,7 @@ var (
 	frequency = 3600
 
 	// number of hours
-	duration = 11
+	duration = 10
 )
 
 func main() {
@@ -44,7 +44,6 @@ func main() {
 	for i := 0; i < duration; i++ {
 		log.Printf("🔥 Trading Volume Bot 🔥 %d out of %d duration", i+1, duration)
 		impactTradingVolume(cfg, client)
-		time.Sleep(1 * time.Hour)
 	}
 }
 
@@ -218,15 +217,15 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 			log.Printf("| ✅ orderPriceY: %s\n", orderPriceY)
 		}
 
-		for k, txByte := range txBytes {
-			resp, err := transaction.BroadcastTx(ctx, txByte)
-			if err != nil {
-				return fmt.Errorf("failed to broadcast transaction: %s", err)
-			}
-			log.Println("----------------------------------------------------------------[Sending Tx] [", k+1, " out of 4 pools]")
-			log.Printf("| TxHash: %s\n", resp.GetTxResponse().TxHash)
-			log.Printf("| Height: %d\n", resp.GetTxResponse().Height)
-		}
+		// for k, txByte := range txBytes {
+		// 	resp, err := transaction.BroadcastTx(ctx, txByte)
+		// 	if err != nil {
+		// 		return fmt.Errorf("failed to broadcast transaction: %s", err)
+		// 	}
+		// 	log.Println("----------------------------------------------------------------[Sending Tx] [", k+1, " out of 4 pools]")
+		// 	log.Printf("| TxHash: %s\n", resp.GetTxResponse().TxHash)
+		// 	log.Printf("| Height: %d\n", resp.GetTxResponse().Height)
+		// }
 
 		log.Println("----------------------------------------------------------------")
 		fmt.Println("")
