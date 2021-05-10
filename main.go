@@ -9,8 +9,9 @@ import (
 	"github.com/b-harvest/gravity-dex-firestation/client"
 	"github.com/b-harvest/gravity-dex-firestation/config"
 	"github.com/b-harvest/gravity-dex-firestation/tx"
-	"github.com/b-harvest/gravity-dex-firestation/util"
 	"github.com/b-harvest/gravity-dex-firestation/wallet"
+
+	liqtypes "github.com/tendermint/liquidity/x/liquidity/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
@@ -26,7 +27,7 @@ var (
 	frequency = 3600
 
 	// number of hours
-	duration = 22
+	duration = 1
 )
 
 func main() {
@@ -77,9 +78,25 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 	log.Printf("| ✅ Sender: %s\n", accAddr)
 	log.Printf("| ✅ Fees: %s\n", fees.String())
 
-	pools, _ := client.GRPC.GetAllPools(context.Background())
-	pools = util.Shuffle(pools)   // shuffle the exisiting pools and remove the ones that are not listed in CoinMarketCap
-	pools = util.Select(pools, 4) // select n number of pools
+	allpools, _ := client.GRPC.GetAllPools(context.Background())
+
+	var pools liqtypes.Pools
+	for _, p := range allpools {
+		pool, err := client.GRPC.GetPool(context.Background(), p.GetPoolId())
+		if err != nil {
+			return fmt.Errorf("failed to get pool information: %s", err)
+		}
+
+		if pool.GetPoolId() == uint64(9) ||
+			pool.GetPoolId() == uint64(34) ||
+			pool.GetPoolId() == uint64(35) ||
+			pool.GetPoolId() == uint64(39) {
+			pools = append(pools, pool)
+		}
+	}
+
+	// pools = util.Shuffle(pools)   // shuffle the exisiting pools and remove the ones that are not listed in CoinMarketCap
+	// pools = util.Select(pools, 4) // select n number of pools
 
 	log.Println("----------------------------------------------------------------[Random Pools]")
 	log.Printf("| pool 1: %s\n", pools[0].String())
