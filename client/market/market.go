@@ -3,6 +3,8 @@ package market
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -69,6 +71,76 @@ func (c *Client) GetGlobalPrices(ctx context.Context, targetDenoms []string) ([]
 	}
 
 	return result, nil
+}
+
+type PoolsCache struct {
+	BlockHeight      int64            `json:"blockHeight"`
+	Pools            []PoolsCachePool `json:"pools"`
+	TotalValueLocked float64          `json:"totalValueLocked"`
+	UpdatedAt        time.Time        `json:"updatedAt"`
+}
+type PoolsCachePool struct {
+	ID                        uint64           `json:"id"`
+	ReserveCoins              []PoolsCacheCoin `json:"reserveCoins"`
+	PoolCoin                  PoolsCacheCoin   `json:"poolCoin"`
+	SwapFeeValueSinceLastHour float64          `json:"swapFeeValueSinceLastHour"`
+	APY                       float64          `json:"apy"`
+}
+type PoolsCacheCoin struct {
+	Denom       string  `json:"denom"`
+	Amount      int64   `json:"amount"`
+	GlobalPrice float64 `json:"globalPrice"`
+}
+
+func (c *Client) GetTargetPools(ctx context.Context) ([]uint64, error) {
+	client := resty.New().SetHostURL(backendBaseAPIURL).SetTimeout(time.Duration(5 * time.Second))
+	resp, err := client.R().Get("pools")
+	if err != nil {
+		return []uint64{}, err
+	}
+	if resp.IsError() {
+		return []uint64{}, err
+	}
+	var data PoolsCache
+	err = json.Unmarshal(resp.Body(), &data)
+	if err != nil {
+		return []uint64{}, err
+	}
+
+	var result []uint64
+
+	for {
+		var found bool
+
+		rand.Seed(time.Now().UnixNano())
+		randomIndex := rand.Intn(len(data.Pools))
+		pool := data.Pools[randomIndex]
+
+		if float64(pool.ReserveCoins[0].Amount)*pool.ReserveCoins[0].GlobalPrice > 1000000 &&
+			float64(pool.ReserveCoins[1].Amount)*pool.ReserveCoins[1].GlobalPrice > 1000000 {
+
+			for _, r := range result {
+				if r == pool.ID {
+					found = true
+				}
+			}
+
+			if !found {
+				result = append(result, pool.ID)
+			}
+		}
+
+		if len(result) >= 4 {
+			break
+		}
+
+		found = false
+	}
+	if len(result) == 4 {
+		return result, err
+	} else {
+		return []uint64{}, fmt.Errorf("getTargetPools len")
+	}
 }
 
 ////////////////////////////////////////////////////////////////

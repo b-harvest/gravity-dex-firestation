@@ -27,7 +27,7 @@ var (
 	frequency = 3600
 
 	// number of hours
-	duration = 1
+	duration = 11
 )
 
 func main() {
@@ -42,8 +42,8 @@ func main() {
 	}
 
 	for i := 0; i < duration; i++ {
+		log.Printf("🔥 Trading Volume Bot 🔥 %d out of %d duration", i+1, duration)
 		impactTradingVolume(cfg, client)
-
 		time.Sleep(1 * time.Hour)
 	}
 }
@@ -78,25 +78,19 @@ func impactTradingVolume(cfg config.Config, client *client.Client) error {
 	log.Printf("| ✅ Sender: %s\n", accAddr)
 	log.Printf("| ✅ Fees: %s\n", fees.String())
 
-	allpools, _ := client.GRPC.GetAllPools(context.Background())
+	targetPools, err := client.Market.GetTargetPools(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get target pools: %s", err)
+	}
 
 	var pools liqtypes.Pools
-	for _, p := range allpools {
-		pool, err := client.GRPC.GetPool(context.Background(), p.GetPoolId())
+	for _, tp := range targetPools {
+		pool, err := client.GRPC.GetPool(context.Background(), tp)
 		if err != nil {
 			return fmt.Errorf("failed to get pool information: %s", err)
 		}
-
-		if pool.GetPoolId() == uint64(9) ||
-			pool.GetPoolId() == uint64(34) ||
-			pool.GetPoolId() == uint64(35) ||
-			pool.GetPoolId() == uint64(39) {
-			pools = append(pools, pool)
-		}
+		pools = append(pools, pool)
 	}
-
-	// pools = util.Shuffle(pools)   // shuffle the exisiting pools and remove the ones that are not listed in CoinMarketCap
-	// pools = util.Select(pools, 4) // select n number of pools
 
 	log.Println("----------------------------------------------------------------[Random Pools]")
 	log.Printf("| pool 1: %s\n", pools[0].String())

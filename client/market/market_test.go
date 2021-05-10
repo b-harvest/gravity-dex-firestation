@@ -1,12 +1,15 @@
 package market_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/b-harvest/gravity-dex-firestation/client/market"
+	"github.com/b-harvest/gravity-dex-firestation/config"
 	resty "github.com/go-resty/resty/v2"
 	"github.com/test-go/testify/require"
 )
@@ -40,4 +43,12 @@ func TestParseGlobalPrices(t *testing.T) {
 	fmt.Println("resp: ", data.BlockHeight)
 	fmt.Println("resp: ", data.UpdatedAt)
 	fmt.Println("resp: ", data.Prices["atom"])
+}
+
+func TestParseTargetPools(t *testing.T) {
+	client := market.NewClient(config.CoinMarketCapConfig{})
+
+	pools, err := client.GetTargetPools(context.Background())
+	require.NoError(t, err)
+	fmt.Println("pools: ", pools)
 }
