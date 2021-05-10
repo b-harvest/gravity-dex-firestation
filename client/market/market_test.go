@@ -48,7 +48,11 @@ func TestParseGlobalPrices(t *testing.T) {
 func TestParseTargetPools(t *testing.T) {
 	client := market.NewClient(config.CoinMarketCapConfig{})
 
-	pools, err := client.GetTargetPools(context.Background())
-	require.NoError(t, err)
-	fmt.Println("pools: ", pools)
+	for i := 0; i < 50; i++ {
+		pools, err := client.GetTargetPools(context.Background())
+		require.NoError(t, err)
+
+		fmt.Println("pools: ", pools)
+		fmt.Println("")
+	}
 }
