@@ -54,20 +54,12 @@ type CoinMarketCapConfig struct {
 
 // DefaultFireStationConfig is the default FireStationConfig.
 var DefaultFireStationConfig = FireStationConfig{
-	CmcIdA: "3794", // ATOM
-	CmcIdB: "4172", // LUNA
-	DenomA: "uatom",
-	DenomB: "uluna",
-	PoolId: uint64(1),
+	FeeAmount: 100000,
+	FeeDenom:  "stake",
 }
 
 // FireStationConfig contains two different denoms and CoinMarketCap symbols.
 type FireStationConfig struct {
-	CmcIdA    string `toml:"cmc_id_a"`
-	CmcIdB    string `toml:"cmc_id_b"`
-	DenomA    string `toml:"denom_a"`
-	DenomB    string `toml:"denom_b"`
-	PoolId    uint64 `toml:"pool_id"`
 	FeeAmount int64  `toml:"fee_amount"`
 	FeeDenom  string `toml:"fee_denom"`
 }

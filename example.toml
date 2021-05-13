@@ -14,10 +14,5 @@ api_key = "<YOUR_API_KEY>"
 mnemonic = "<YOUR_MNEMONIC>"
 
 [firestation]
-cmc_id_a = "3794" # ATOM 
-cmc_id_b = "4172" # LUNA
-denom_a = "uatom"
-denom_b = "uluna"
-pool_id = 1
 fee_denom = "stake"
 fee_amount = 10000000

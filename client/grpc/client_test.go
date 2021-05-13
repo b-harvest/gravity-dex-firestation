@@ -28,13 +28,37 @@ func TestMain(m *testing.M) {
 }
 
 func TestPoolReserves(t *testing.T) {
-	ctx := context.Background()
+	// go clean -testcache
+	testCases := []struct {
+		name            string
+		reserCoinDenoms []string
+	}{
 
-	reservePoolDenoms := []string{"uatom", "uluna"}
+		{
+			"",
+			[]string{"udvpn", "ungm"},
+		},
+	}
 
-	reserveA, reserveB, err := c.GetPoolReserves(ctx, reservePoolDenoms)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			reserveA, reserveB, err := c.GetPoolReserves(context.Background(), tc.reserCoinDenoms)
+			require.NoError(t, err)
+
+			fmt.Printf("denomA: %s reserveA: %s \n", tc.reserCoinDenoms[0], reserveA)
+			fmt.Printf("denomB: %s reserveB: %s \n", tc.reserCoinDenoms[1], reserveB)
+			fmt.Println("")
+		})
+	}
+}
+
+func TestAllPools(t *testing.T) {
+	pools, err := c.GetAllPools(context.Background())
 	require.NoError(t, err)
 
-	fmt.Println("reserveA: ", reserveA)
-	fmt.Println("reserveB: ", reserveB)
+	for _, p := range pools {
+		fmt.Println(p)
+	}
+
+	fmt.Println(len(pools))
 }

@@ -108,7 +108,7 @@ func (t *Transaction) BroadcastTx(ctx context.Context, txBytes []byte) (*sdktx.B
 
 	req := &sdktx.BroadcastTxRequest{
 		TxBytes: txBytes,
-		Mode:    sdktx.BroadcastMode_BROADCAST_MODE_BLOCK,
+		Mode:    sdktx.BroadcastMode_BROADCAST_MODE_ASYNC,
 	}
 	return client.BroadcastTx(ctx, req)
 }

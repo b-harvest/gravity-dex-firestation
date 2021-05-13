@@ -61,6 +61,28 @@ func (c *Client) GetAllBalances(ctx context.Context, address string) (sdk.Coins,
 	return resp.GetBalances(), nil
 }
 
+// GetBaseAccountInfo returns base account information.
+func (c *Client) GetBaseAccountInfo(ctx context.Context, address string) (authtypes.BaseAccount, error) {
+	client := authtypes.NewQueryClient(c.client)
+
+	req := authtypes.QueryAccountRequest{
+		Address: address,
+	}
+
+	resp, err := client.Account(ctx, &req)
+	if err != nil {
+		return authtypes.BaseAccount{}, err
+	}
+
+	var acc authtypes.BaseAccount
+	err = acc.Unmarshal(resp.GetAccount().Value)
+	if err != nil {
+		return authtypes.BaseAccount{}, err
+	}
+
+	return acc, nil
+}
+
 // GetPoolReserves returns pool reserves of the pool.
 func (c *Client) GetPoolReserves(ctx context.Context, reservePoolDenoms []string) (sdk.Dec, sdk.Dec, error) {
 	poolName := liqtypes.PoolName(reservePoolDenoms, 1)
@@ -88,29 +110,42 @@ func (c *Client) GetPoolReserves(ctx context.Context, reservePoolDenoms []string
 	return amountX.ToDec(), amountY.ToDec(), nil
 }
 
+// GetPool returns pool information.
+func (c *Client) GetPool(ctx context.Context, poolId uint64) (liqtypes.Pool, error) {
+	client := c.GetLiquidityQueryClient()
+
+	req := liqtypes.QueryLiquidityPoolRequest{
+		PoolId: poolId,
+	}
+
+	resp, err := client.LiquidityPool(ctx, &req)
+	if err != nil {
+		return liqtypes.Pool{}, err
+	}
+
+	return resp.GetPool(), nil
+}
+
+// GetAllPools returns all existing pools.
+func (c *Client) GetAllPools(ctx context.Context) (liqtypes.Pools, error) {
+	client := c.GetLiquidityQueryClient()
+
+	req := liqtypes.QueryLiquidityPoolsRequest{}
+
+	resp, err := client.LiquidityPools(ctx, &req)
+	if err != nil {
+		return liqtypes.Pools{}, err
+	}
+
+	return resp.GetPools(), nil
+}
+
+// GetLiquidityQueryClient returns a object of queryClient
+func (c *Client) GetLiquidityQueryClient() liqtypes.QueryClient {
+	return liqtypes.NewQueryClient(c.client)
+}
+
 // GetTxClient returns an object of service client.
 func (c *Client) GetTxClient() sdktx.ServiceClient {
 	return sdktx.NewServiceClient(c.client)
-}
-
-// GetBaseAccountInfo returns base account information.
-func (c *Client) GetBaseAccountInfo(ctx context.Context, address string) (authtypes.BaseAccount, error) {
-	client := authtypes.NewQueryClient(c.client)
-
-	req := authtypes.QueryAccountRequest{
-		Address: address,
-	}
-
-	resp, err := client.Account(ctx, &req)
-	if err != nil {
-		return authtypes.BaseAccount{}, err
-	}
-
-	var acc authtypes.BaseAccount
-	err = acc.Unmarshal(resp.GetAccount().Value)
-	if err != nil {
-		return authtypes.BaseAccount{}, err
-	}
-
-	return acc, nil
 }

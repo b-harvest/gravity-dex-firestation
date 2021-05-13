@@ -34,33 +34,30 @@ cd gravity-dex-firestation
 go run main.go
 ```
 
-## CoinMarketCap Symbols & Denoms
+## CoinMarketCap Metadata
 
 - [CoinMarketCap API Documentation](https://coinmarketcap.com/api/documentation/v1/)
 - [Listings Latest](https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=5000): Your own API key is required to query this API.
 
 | name | id | symbol | denom |
 |---|---|---|---|
-| Cosmos Hub    | 3794 | ATOM | uatom |
-| Terra         | 4172 | LUNA | uluna |
-| Akash Network | 7431 | AKT  | uakt  |
-| IRISnet       | 3874 | IRIS | uiris |
+| Cosmos Hub        | 3794 | ATOM | uatom |
+| Bitsong           | 8905 | BTSG | ubtsg |
+| Sentinel          | 2643 | DVPN | udvpn |
+| Persistence       | 7281 | XPRT | uxprt |
+| Akash Network     | 7431 | AKT  | uakt  |
+| Terra             | 4172 | LUNA | uluna |
+| E-Money           | 8279 | NGM  | ungm  |
+| IRISnet           | 3874 | IRIS | uiris |
+| NOT LISTED COINS  | 3874 | IRIS | uiris |
 | ... | ... |
-
 ## Test 
 
 ```bash 
 # Set up a local network
 make localnet
 
-# Create liquidity pool with two different coins
-liquidityd tx liquidity create-pool 1 312098329313uatom,369915019230uluna \
---home ./data/localnet \
---chain-id localnet \
---from user1 \
---keyring-backend test \
---yes
-
-# Change config.toml and run
-go run main.go
+# Read through https://github.com/b-harvest/liquidity-stress-test repo and move into the directory
+# Create all pools with the existing coins 
+tester ca
 ```

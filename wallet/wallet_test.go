@@ -27,9 +27,9 @@ func TestRecoverAccAddrFromMnemonic(t *testing.T) {
 			expAccAddr: "cosmos1mzgucqnfr2l8cj5apvdpllhzt4zeuh2cshz5xu",
 		},
 		{
-			mnemonic:   "friend excite rough reopen cover wheel spoon convince island path clean monkey play snow number walnut pull lock shoot hurry dream divide concert discover",
+			mnemonic:   "fuel obscure melt april direct second usual hair leave hobby beef bacon solid drum used law mercy worry fat super must ritual bring faculty",
 			password:   "",
-			expAccAddr: "cosmos1mzgucqnfr2l8cj5apvdpllhzt4zeuh2cshz5xu",
+			expAccAddr: "cosmos185fflsvwrz0cx46w6qada7mdy92m6kx4gqx0ny",
 		},
 	}
 
